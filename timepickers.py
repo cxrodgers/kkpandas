@@ -15,10 +15,31 @@ from base import Folded
 import utility
 
 
-class TrialPicker:    
+class TrialPicker:   
+    """Object for picking trial numbers based on trials_info"""
     @classmethod
     def pick(self, trials_info, labels=None, label_kwargs=None, 
         **all_kwargs):
+        """Returns list of trial numbers satisfying list of constraints.
+        
+        trials_info : DataFrame containing information about each trial,
+            indexed by trial_number
+        labels : list of length N, labeling each set of constraints
+        label_kwargs : list of length N, consisting of kwargs to pass to
+            panda_pick on trials_info (the constraints)
+        all_kwargs : added to each label_kwarg
+        
+        Returns: list of length N
+        Each entry is a tuple (label, val) where label is the constraint
+        label and val is the picked trial numbers satisfying that constraint.
+        
+        Example
+        labels = ['LB', 'PB']
+        label_kwargs = [{'block':2}, {'block':4}]
+        all_kwargs = {'outcome':'hit'}
+        The return value would be:
+        [('LB', list_of_LB_trials), ('PB', list_of_PB_trials)]
+        """
         if labels is None:
             labels = self.labels
         if label_kwargs is None:
@@ -30,7 +51,7 @@ class TrialPicker:
         for label, kwargs in zip(labels, label_kwargs):
             kk = kwargs.copy()
             kk.update(all_kwargs)
-            val = self._pick(trials_info, **kk)
+            val = utility.panda_pick(trials_info, **kk)
             res.append((label, val))
         
         return res
