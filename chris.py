@@ -5,7 +5,6 @@ import io
 import numpy as np
 import utility
 from ns5_process import LBPB
-from ns5_process.RS_Sync import RS_Syncer
 from base import Folded
 from timepickers import TrialPicker
 import matplotlib.pyplot as plt

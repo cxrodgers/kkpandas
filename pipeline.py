@@ -14,7 +14,10 @@ times from each trial. That iteration should be handled here, somehow ...
 import numpy as np
 import io
 from timepickers import TrialPicker, EventTimePicker, IntervalTimePickerNoTrial
-from ns5_process.RS_Sync import RS_Syncer # remove this dependency
+# Something problematic about this circular import
+# Doesn't belong here anyway since this should not depend on RS_Syncer
+# Will move to into that pipeline method till I figure this out
+#from ns5_process.RS_Sync import RS_Syncer # remove this dependency
 from base import Folded
 
 class IntervalPipeline:
@@ -63,6 +66,8 @@ class IntervalPipeline:
 def pipeline_overblock_oneevent(kkserver, session, unit, rs,
     trial_picker=TrialPicker, trial_picker_kwargs=None,
     evname='play_stimulus_in', folding_kwargs=None):
+ 
+    from ns5_process.RS_Sync import RS_Syncer # remove this dependency
     
     # And a trial_server object?
     trials_info = io.load_trials_info(rs.full_path)
