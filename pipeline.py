@@ -75,7 +75,7 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
 
     # Spike selection
     spikes = np.asarray(
-        kkserver.load(session=session, unit=unit).spike_time)
+        kkserver.get(session=session, unit=unit).time)
 
     
     # Select trials from behavior
