@@ -15,7 +15,12 @@ def read_resfile(filename):
     """Returns spiketimes in samples as Series"""
     return pandas.read_table(filename, names=['spike_time'])['spike_time']
 
-def read_fetfile(filename):
+def read_fetfile(filename, guess_time_column=True):
+    """Reads features from fet file.
+    
+    If guess_time_column, will look at the last column and if it contains
+    only positive values, then we assume it is the spike time.
+    """
     with file(filename) as fi:
         n_features = int(fi.readline().strip())       
         table_sz = len(fi.readline().strip().split(' '))
@@ -26,7 +31,7 @@ def read_fetfile(filename):
         names=['feature%d' % n for n in range(table_sz)])
     
     # Auto-guess whether the last column is a time (it probably is)
-    if np.all(data[data.columns[-1]] > 0):    
+    if guess_time_column and np.all(data[data.columns[-1]] > 0):    
         data = data.rename(columns={data.columns[-1]: 'spike_time'}, copy=False)
     
     # Here is where code to drop unwanted features would go, based on
@@ -61,8 +66,8 @@ def load_spiketimes(kfs_or_path, group, fs=None):
 
 # This is the main function to intelligently load data from KK files
 def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
-    verify_unique_clusters=True, concatenate_groups=True,
-    add_group_as_column=True):
+    verify_unique_clusters=True, add_group_as_column=True, 
+    load_memoized=True, save_memoized=True):
     """Main function for loading KlustaKwik data.
     
     basename : path to, or basename of, files
@@ -76,14 +81,30 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
         otherwise, they are divided by this number
     verify_unique_clusters : if True, check that there are no overlapping
         cluster ids across groups
-    concatenate_groups : if True, returns one DataFrame containing all
-        information
-        Otherwise, returns dict {groupnumber: groupDataFrame}
     add_group_as_column : if True, then the returned value has a column
         for the group from which the spike came.
+    load_memoized : If a file like basename.kkp exists, load this DataFrame
+        and return. Note all other parameters (except basename) are ignored.
+    save_memoized : the data will be written to a file like
+        basename.kkp after loading.
+    
+    Returns:
+        DataFrame with columns 'unit', 'spike_time', and optionally 'group'
     """
     # load files like basename
     kfs = KKFileSchema.coerce(basename)
+    
+    # try to load memoized
+    memoized_filename = kfs.basename + '.kkp'
+    if load_memoized:
+        try:
+            data = pandas.load(memoized_filename)
+            return_early = True
+        except IOError:
+            return_early = False
+        
+        if return_early:
+            return data
     
     # which groups to get
     if groups_to_get:
@@ -125,11 +146,12 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
             raise ValueError("got %d overlapping clusters" % 
                 (n_total_clusters - n_unique_clusters))
     
-    # optionally turn list into one giant dataframe for everybody
-    if concatenate_groups:
-        sorted_keys = sorted(group_d.keys())
-        data = pandas.concat([group_d[key] for key in sorted_keys], 
-            ignore_index=True)    
-        return data
-    else:
-        return group_d
+    # turn list into one giant dataframe for everybody
+    sorted_keys = sorted(group_d.keys())
+    data = pandas.concat([group_d[key] for key in sorted_keys], 
+        ignore_index=True)    
+
+    if save_memoized:
+        data.save(memoized_filename)
+
+    return data
