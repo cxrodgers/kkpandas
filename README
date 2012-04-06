@@ -8,6 +8,8 @@ kkpandas: a module that actually does the reading of the files and formats them 
 
 I chose to use the pandas module for this because the DataFrame object is a rich way to deal with structured data like this, and also because the plaintext reading functions in pandas appear to be much faster than numpy/matplotlib equivalents for this application. Still you will find that the speed of reading plaintext is the rate-limiting step.
 
+There has been some drift in the KK file format specification over time. For instance, Klusters *requires* that the last column in the fetfile be the list of spike times, and that the number of features include this time, even though this is not a true feature of the spike. (Thanks to John Schulman for pointing this out.) Also, the xml file that Klusters uses disallows the use of a group numbered `0` and essentially insists that you start with 1.
+
 
 Chris Rodgers
 xrodgers@gmail.com
