@@ -37,6 +37,25 @@ t_starts, t_stops = TrialSlicer(events, start='ambient_in', stop='ambient_out')
 folded = Folded.from_flat(flat, t_starts, t_stops)
 binned = Binned.from_folded(folded, binwidth=.001)
 plot(binned.mean())
+
+
+The main representations are as follows:
+* Flat : list of spike times associated with one or more units
+* Folded : list of flat representations, one for each trial
+* Smoothed : table of histogrammed spike times, one for each category
+  (which could be a single trial)
+
+Computation objects
+* TimePicker : generates a list of times to lock on, for instance trials of
+ a certain type
+* UnitPicker : generates a list of units to analyze
+These are used to choose times / units to fold on
+
+
+Define these objects here. Then, another module for derived objects that
+do common operations for my data, eg, choosing stimuli of a certain type.
+
+
 """
 
 
