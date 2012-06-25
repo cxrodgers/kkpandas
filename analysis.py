@@ -81,6 +81,46 @@ class Folded:
         to_binned : bin all trials together
             - same
     """
+    def __init__(self, values, starts, stops, centers=None):
+        self.values = values
+        self.starts = starts
+        self.stops = stops
+        self.centers = centers
+    
+    def __getitem__(self, key):
+        return self.values[key]
+    
+    @classmethod
+    def from_flat(self, flat, starts, stops=None, durations=None):
+        """Construct Folded from Flat.
+        
+        flat : representation of events with column `time`
+        starts : beginning of each trial (ie, entry in returned result)
+        stops : end of each trial
+        
+        If stops is None, adds `durations` to starts and uses that.
+        If `durations` is also None, then uses all of the data (by using
+        the next start as the stop).
+        """
+        starts = np.asarray(starts)
+
+        # Define stops somehow
+        if stops is None:
+            if durations is not None:
+                stops = starts + durations
+            else:
+                stops = list(starts[1:])
+                stops.append(flat.time.max())
+                stops = np.asarray(stops)
+        
+        # Extract and append
+        res = []
+        for start, stop in zip(starts, stops):
+            res.append(flat[(flat.time >= start) & (flat.time < stop)])
+            res[-1]['time'] -= start
+
+        # Construct and return
+        return Folded(values=res, starts=starts, stops=stops)
 
 class Binned:
     """Stores binned spike counts, optionally across categories (eg, stimuli).
@@ -283,55 +323,60 @@ def timelock(a1, a2, start=0, stop=0, center=True):
     
     return res
 
+
+
+
+
+# Utility functions for data frames
 def startswith(df, colname, s):
     # untested
     ixs = map(lambda ss: ss.startswith(s), df[colname])
     return df[ixs]
 
+def is_nonstring_iter(val):
+    return hasattr(val, '__len__') and not isinstance(val, str)
 
-# Sandbox of methods to load data into canonical form
-def get_events_and_trials(dirname, bskip=0):
-    """Returns times of events and trials info.
+def panda_pick(df, isnotnull=None, **kwargs):
+    """Underlying picking function
     
-    Given a directory containing the following files:
-        * some bcontrol data
-        * TIMESTAMPS (neural onsets)
+    Returns indexes into trials_info for which the following is true
+    for all kwargs:
+        * if val is list-like, trials_info[key] is in val
+        * if val is not list-like, trials_info[key] == val
     
-    bskip : Number of behavioral trials that occurred before neural
-        recording began.
+    list-like is defined by responding to __len__ but NOT being a string
+    (since this is commonly something we test against)
     
-    Will load all of the events and trials, convert to a neural timebase.
+    isnotnull : if not None, then can be a key or list of keys that should
+        be checked for NaN using pandas.isnull
     
-    This should go into RecordingSession, then dump the formatted
-    DataFrames there.
-    
-    Returns:
-        events, trials_info
+    TODO:
+    add flags for string behavior, AND/OR behavior, error if item not found,
+    return unique, ....
     """
-    # get events
-    bcld = bcontrol.Bcontrol_Loader_By_Dir(dirname)
-    bcld.load()
-    peh = bcld.data['peh']
-    TI = bcontrol.demung_trials_info(bcld)
-    events = pandas.DataFrame.from_records(
-        bcontrol.generate_event_list(peh, bcld.data['TRIALS_INFO'], bskip))
+    msk = np.ones(len(df), dtype=np.bool)
+    for key, val in kwargs.items():
+        if is_nonstring_iter(val):
+            msk &= df[key].isin(val)
+        else:
+            msk &= (df[key] == val)
+    
+    if isnotnull is not None:
+        # Edge case
+        if not is_nonstring_iter(isnotnull):
+            isnotnull = [isnotnull]
+        
+        # Filter by not null
+        for key in isnotnull:
+            msk &= -pandas.isnull(df[key])
 
-    # store sync info
-    # this should be done by RecordingSession and then stored for future use
+    return df.index[msk]
 
-    btimes = events[events.event == 'play_stimulus_in'].time[bskip:]
-    ntimes = np.loadtxt(os.path.join(dirname, 'TIMESTAMPS')) / 30e3
-    b2n = np.polyfit(btimes, ntimes, deg=1)
+def panda_pick_data(df, **kwargs):
+    """Returns sliced DataFrame based on indexes from panda_pick"""
+    return df.ix[panda_pick(df, **kwargs)]
 
-    # Convert behavioral times
-    events['time'] = np.polyval(b2n, events.time)
 
-    # Insert trial times into trials_info
-    TI.set_index('trial_number', inplace=True)
-    TI.insert(0, 'time', np.nan)
-    TI['time'][bskip:bskip+len(ntimes)] = ntimes
-
-    return events, TI
 
 
 
