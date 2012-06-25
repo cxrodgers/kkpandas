@@ -198,12 +198,7 @@ class Binned:
         self.trials = pandas.DataFrame(trials)
         
         # Initialize category names
-        if columns is None:
-            self.columns = self.counts.columns
-            assert np.all(
-                self.counts.columns.values == self.trials.columns.values)
-        else:
-            self.columns = columns
+        if columns is not None:
             self.counts.columns = columns
             self.trials.columns = columns
         
@@ -222,8 +217,65 @@ class Binned:
             self.t = t
         
         # calculate rate
-        self.rate = counts / trials.astype(np.float)
+        #self.rate = counts / trials.astype(np.float)
     
+    # Wrapper functions around DataFrame methods
+    def __getitem__(self, key):
+        return Binned(counts=self.counts[key], trials=self.trials[key],
+            edges=self.edges)
+    
+    def rename(self, columns=None, multi_index=True):
+        """Inplace rename columns"""
+        self.counts = self.counts.rename(columns=columns)
+        self.trials = self.trials.rename(columns=columns)
+        
+        if multi_index:
+            self.tuple2multi()
+    
+    def reorder(self, columns=None):
+        """Inplace reorder columns"""
+        self.counts = self.counts[columns]
+        self.trials = self.trials[columns]
+    
+    def drop(self, labels, axis=1):
+        """Note default behavior is to drop column.
+        
+        Also deals with string column labels
+        """
+        if not is_nonstring_iter(labels):
+            labels = [labels]
+        self.counts = self.counts.drop(labels, axis)
+        self.trials = self.trials.drop(labels, axis)
+    
+    def sum(self, axis=0, level=None):
+        return Binned(
+            counts=self.counts.sum(axis=axis, level=level),
+            trials=self.trials.sum(axis=axis, level=level),
+            edges=self.edges)
+   
+    @property
+    def columns(self):
+        assert np.all(
+            self.counts.columns.values == self.trials.columns.values)
+        return self.counts.columns
+    
+    # Convenience methods for things I can never remember how to do
+    def tuple2multi(self):
+        if is_nonstring_iter(self.columns[0]):
+            idx = pandas.MultiIndex.from_tuples(self.columns)
+            self.counts.columns = idx
+            self.trials.columns = idx
+
+    def sum_columns(self, level=None):
+        """Sum over categories. Specify level if multi-indexing"""
+        return self.sum(axis=1, level=level)
+
+    # Rate calculation
+    @property
+    def rate(self):
+        return self.counts / self.trials.astype(np.float)
+    
+    # Construction methods    
     @classmethod
     def from_folded(self, folded, bins=None, starts=None, stops=None):
         """Construct Binned object by histogramming list-like Folded.
@@ -285,7 +337,14 @@ class Binned:
     def from_dict_of_folded(self, dfolded, keys=None, bins=None):
         """Initialize a Binned from a dict of Folded over various categories
         
-        The category labels will be the keys to dfolded.
+        Simple wrapper function that creates a Binned from each Folded,
+        then sticks them together into a single Binned.
+        
+        dfolded : dict from category name to Folded of replicates from
+            that category
+        keys : ordered category names that you wish to include. If None,
+            uses dfolded.keys()
+        bins : number or array, passed to from_folded
         """
         if keys is None:
             keys = dfolded.keys()
@@ -497,27 +556,3 @@ def panda_pick_data(df, **kwargs):
 
 
 
-
-
-# PLOTTING stuff
-def plot_psth_with_rasters_from_dict(
-    dfolded, keys=None, spshape=None, bins=None):
-    
-    if keys is None:
-        keys = dfolded.keys()
-    
-    f = plt.figure()
-    for n, key in enumerate(keys):
-        folded = dfolded[key]
-        ax = f.add_subplot(spshape[0], spshape[1], n + 1)        
-        plot_psth_with_rasters(folded, bins=bins, ax=ax)
-    
-    plt.show()
-
-def plot_psth_with_rasters(folded, smoothed=None, bins=None, ax=None):
-    myutils.plot_rasters(folded, ax=ax)
-    
-    if smoothed is None:
-        smoothed = Binned.from_folded(folded, bins=bins)
-    ax.plot(smoothed.t, smoothed.rate)
-    
