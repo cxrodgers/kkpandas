@@ -71,7 +71,8 @@ class Folded:
     Provides iteration over these spikes from each trial, as well as
     remembering the time base of each trial.
     """
-    def __init__(self, values, starts, stops, centers=None, range=None):
+    def __init__(self, values, starts, stops, centers=None, 
+        subtract_off_center=False, range=None, dataframe_like=None):
         """Initialize a new Folded
         
         values : list of times on each trial, also accessible with getitem
@@ -90,20 +91,40 @@ class Folded:
             over all trials.
         """
         self.values = values
-        self.starts = starts
-        self.stops = stops
+        self.starts = np.asarray(starts)
+        self.stops = np.asarray(stops)
         
+        # Guess whether dataframe like
+        if dataframe_like is None:
+            if len(values) > 0:
+                try:
+                    values[0]['time']
+                    dataframe_like = True
+                except KeyError:
+                    dataframe_like = False
+        self.dataframe_like = dataframe_like
+        
+        # Store or calculate centers
         if centers is None:
             self.centers = starts
         else:
-            self.centers = centers
+            self.centers = np.asarray(centers)
         
+        # Store or calculate range
         if range is None:
             t_start = np.min(starts - centers)
             t_stop = np.max(stops - centers)
             self.range = (t_start, t_stop)
         else:
             self.range = range
+        
+        # Optionally subtract off center
+        if subtract_off_center:
+            for val, center in zip(self.values, self.centers):
+                if self.dataframe_like:
+                    val['time'] -= center
+                else:
+                    val -= center
     
     def __getitem__(self, key):
         return self.values[key]
@@ -112,39 +133,41 @@ class Folded:
         return len(self.values)
     
     @classmethod
-    def from_flat(self, flat, starts, centers=None, stops=None, durations=None):
+    def from_flat(self, flat, starts=None, centers=None, stops=None, dstart=None,
+        dstop=None):
         """Construct Folded from Flat.
         
-        flat : representation of events with column `time`
-        starts : beginning of each trial (ie, entry in returned result)
-        stops : end of each trial
-        
-        If stops is None, adds `durations` to starts and uses that.
-        If `durations` is also None, then uses all of the data (by using
-        the next start as the stop).
+        flat : A flat representation of spike times. It could be a simple
+            array of times, or a DataFrame with a column 'time'.
+        starts, centers, stops, dstart, dstop : ways of specifying trial
+            windows. See `timelock`
         """
-        starts = np.asarray(starts)
+        # Figure out whether input is structured or simple
+        dataframe_like = True
+        try:
+            spike_times = flat['time']
+        except KeyError:
+            spike_times = flat
+            dataframe_like = False
+    
+        # Get indexes into flat with timelock
+        # We need to get the starts/centers/stops as actually calculated
+        idx, starts, centers, stops = timelock(spike_times, 
+            a2=centers, start=starts, stop=stops, dstart=dstart, dstop=dstop,
+            return_value='index', error_check=True, return_boundaries=True)
         
-        if centers is None:
-            centers = starts
-
-        # Define stops somehow
-        if stops is None:
-            if durations is not None:
-                stops = starts + durations
-            else:
-                stops = list(starts[1:])
-                stops.append(flat.time.max())
-                stops = np.asarray(stops)
+        # Turn indexes back into values
+        if dataframe_like:
+            # Reconstruct values by indexing back into flat
+            res = [flat.ix[flat.index[iix]] for iix in idx]
+        else:
+            # Simple input, could have used return_value='original' above
+            res = [flat[iix] for iix in idx]
         
-        # Extract and append
-        res = []
-        for start, stop, center in zip(starts, stops, centers):
-            res.append(flat[(flat.time >= start) & (flat.time < stop)])
-            res[-1]['time'] -= center
-
-        # Construct and return
-        return Folded(values=res, starts=starts, stops=stops, centers=centers)
+        # Construct Folded, using trial boundaries as calculate, and
+        # subtracting off triggers
+        return Folded(values=res, starts=starts, stops=stops, centers=centers,
+            subtract_off_center=True)
     
 
 class Binned:
@@ -205,8 +228,11 @@ class Binned:
     def from_folded(self, folded, bins=None, starts=None, stops=None):
         """Construct Binned object by histogramming list-like Folded.
         
-        This returns a Binned with one category. To return multiple categories,
-        see from_dict_of_folded
+        It is assumed that folded contains replicates to be averaged together.
+        Thus, this returns a Binned with one category. 
+        
+        If you are trying to form a Binned with more than one category, see
+        from_dict_of_folded
         
         Variables:
         folded : list-like, each entry is an array of locked times
@@ -272,7 +298,11 @@ class Binned:
     
     @classmethod
     def from_dict_of_binned(self, dbinned, keys=None):
-        """Initialize a Binned from a dict of Binned."""
+        """Initialize a Binned from a dict of Binned.
+        
+        This is a concatenation-like operation: the result contains
+        each of the values in dbinned in columns titled by keys
+        """
         # If no keys specified, use all keys in sorted order
         if keys is None:
             keys = sorted(dbinned.keys())
@@ -301,32 +331,117 @@ class Binned:
 
     
 
-def timelock(a1, a2, start=0, stop=0, center=True):
+def timelock(a1, a2=None, start=None, stop=None, dstart=None, dstop=None,
+    return_value='original', error_check=True, return_boundaries=False,
+    warn_if_overlap=True):
     """Returns list of peri-event times.
     
-    a1 : sorted array of times to lock
-    a2 : set of events to lock on
-    start : number, or array of shape a2, one for each event
-    stop : number, or array of shape a2, one for each event
-    center : center each list to its locking event
+    This is the inner-loop in most spike analysis and is optimized here
+    with np.searchsorted. That means you must pre-sort all arguments. Set
+    `error_check` to False to disable run-time checking of this, which may
+    improve speed by a small amount.
+    
+    a1 : sorted array of times to lock. Result consists of values from this.
+    
+    There are two ways to specify the "triggers", one for each event.
+    Method 1:
+        Specify `a2` as a sorted array of triggers.
+        In this case you must also specify the window around each event, by
+        specifying one of the following:
+        `dstart` : Added to `a2` to calculate start of each trial, so can be
+            array-like or number.
+        `start` : Exact trial starts, so should be same shape as `a2`.
+        
+        You define `stop` or `dstop` similarly.
+    Method 2:
+        Let `a2` be None, and specify `start` as an array of trial starts.
+        In this case, you must specify `stop` or `dstop` so that trial stops
+        can be calculated by adding to `start`.
+    Method 3:
+        You only specify `a2` or `start` and nothing else. In this case
+        these are used as the start/trigger times, and the stop times are
+        the subsequent start time.
+    
+    You can specify overlapping trial windows but a warning is printed if
+    `warn_if_overlap` is True.
     
     Returns:
-    List of same length as `a2`. Each entry is an array of times
-    that occurred within [event - start, event + stop)
-    """
-    res = []
-    i_starts = np.searchsorted(a1, a2 + start)
-    i_stops = np.searchsorted(a1, a2 + stop)
+    List of length equal to number of triggers. Each entry is an array of times
+    from `a2` that occurred within a half-open interval around the triggers.
     
-    if center:
+    The return value is always of the same shape, but takes one of the following
+    values depending on `return_value`:
+        'original' : the original times from `a1`
+        'recentered' : the original times from `a1`, aligned to the triggers.
+            That is, the trigger times are subtracted off. If Method 2 was
+            used (see above), then the subtract off the start times.
+        'index' : Indexes into `a1`
+    
+    If return_boundaries is True:
+        will also return starts, centers, stops
+    """
+    a1 = np.asarray(a1)
+    
+    # Define a2 and start
+    if a2 is None:
+        # Method 2: Define center using start
+        start = np.asarray(start)
+        a2 = start
+    else:
+        # Method 1: Define start using center
+        if start is None:
+            if dstart is None:
+                start = np.asarray(a2)
+            else:
+                start = np.asarray(a2) + np.asarray(dstart)
+        else:
+            start = np.asarray(start)
+
+    # Define stop
+    if stop is None:
+        if dstop is not None:
+            stop = np.asarray(a2) + np.asarray(dstop)
+        else:
+            # Method 3: greedy definition of stop
+            stop = np.concatenate([start[1:], [a1.max() + 1]])
+    
+    # Now some error checking
+    if error_check:
+        if np.any(a1 != np.sort(a1)):
+            raise Exception("times must be sorted")
+        if np.any(start != np.sort(start)):
+            raise Exception("starts must be sorted")
+        if np.any(stop != np.sort(stop)):
+            raise Exception("stops must be sorted")
+        if np.any(stop < start):
+            raise Exception("stops must be after starts")
+    
+    if warn_if_overlap:
+        if np.any(start[1:] < stop[:-1]):
+            print "warning: trial overlap in timelock, possible doublecounting"
+    
+    # Find indexes into a1 using start and stop
+    i_starts = np.searchsorted(a1, start)
+    i_stops = np.searchsorted(a1, stop)
+    
+    # Form result list using those indexes
+    res = []
+    if return_value == 'original':
+        for i_start, i_stop in zip(i_starts, i_stops):
+            res.append(a1[i_start:i_stop])        
+    elif return_value == 'recentered':
         for i_start, i_stop, aa2 in zip(i_starts, i_stops, a2):
             res.append(a1[i_start:i_stop] - aa2)
+    elif return_value == 'index':
+        for i_start, i_stop, aa2 in zip(i_starts, i_stops, a2):
+            res.append(range(i_start, i_stop))
     else:
-        for i_start, i_stop in zip(i_starts, i_stops):
-            res.append(a1[i_start:i_stop])
+        raise Exception("unsupported return value: %s" % return_value)
     
-    return res
-
+    if return_boundaries:
+        return res, start, a2, stop
+    else:
+        return res
 
 
 
