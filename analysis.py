@@ -269,6 +269,11 @@ class Binned:
     def sum_columns(self, level=None):
         """Sum over categories. Specify level if multi-indexing"""
         return self.sum(axis=1, level=level)
+    
+    def sum_rows(self):
+        return Binned(
+            counts=self.counts.sum(axis=0),
+            trials=self.trials.mean(axis=0))
 
     # Rate calculation
     @property
