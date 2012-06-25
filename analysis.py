@@ -66,32 +66,53 @@ from ns5_process import bcontrol
 import os.path
 
 class Folded:
-    """Stores spike times on each trial timelocked to some event
-    
-    List-like or dict-like
-    
-    Provides:
-        iteration over trials, each entry being an array of spike times
-            (or potentially a spiketrain object?)
-        starts : start time of each trial, relative to event
-        stops : stop time of each trial, relative to event
-        to_binned_by_trial : bin each trial separately
-            - actually this should be a method of Binned, since it depends
-            on how to smooth
-        to_binned : bin all trials together
-            - same
+    """Stores spike times on each trial timelocked to some event in that trial.
+
+    Provides iteration over these spikes from each trial, as well as
+    remembering the time base of each trial.
     """
-    def __init__(self, values, starts, stops, centers=None):
+    def __init__(self, values, starts, stops, centers=None, range=None):
+        """Initialize a new Folded
+        
+        values : list of times on each trial, also accessible with getitem
+        (though perhaps it should be some kind of trial-label?)
+        Each entry is aligned to the corresponding entry in `centers`
+    
+        These arrays are all of the same length:
+        starts : array of start times by trial
+        stops : array of stop times by trial
+        centers : array of trigger times by trial
+            If not specified, uses starts
+        
+        range : A tuple (t_start, t_stop) for suggesting a range over which
+        PSTH can be calculated.    
+            If not specified, uses largest starting and stopping times
+            over all trials.
+        """
         self.values = values
         self.starts = starts
         self.stops = stops
-        self.centers = centers
+        
+        if centers is None:
+            self.centers = starts
+        else:
+            self.centers = centers
+        
+        if range is None:
+            t_start = np.min(starts - centers)
+            t_stop = np.max(stops - centers)
+            self.range = (t_start, t_stop)
+        else:
+            self.range = range
     
     def __getitem__(self, key):
         return self.values[key]
     
+    def __len__(self):
+        return len(self.values)
+    
     @classmethod
-    def from_flat(self, flat, starts, stops=None, durations=None):
+    def from_flat(self, flat, starts, centers=None, stops=None, durations=None):
         """Construct Folded from Flat.
         
         flat : representation of events with column `time`
@@ -103,6 +124,9 @@ class Folded:
         the next start as the stop).
         """
         starts = np.asarray(starts)
+        
+        if centers is None:
+            centers = starts
 
         # Define stops somehow
         if stops is None:
@@ -115,12 +139,13 @@ class Folded:
         
         # Extract and append
         res = []
-        for start, stop in zip(starts, stops):
+        for start, stop, center in zip(starts, stops, centers):
             res.append(flat[(flat.time >= start) & (flat.time < stop)])
-            res[-1]['time'] -= start
+            res[-1]['time'] -= center
 
         # Construct and return
-        return Folded(values=res, starts=starts, stops=stops)
+        return Folded(values=res, starts=starts, stops=stops, centers=centers)
+    
 
 class Binned:
     """Stores binned spike counts, optionally across categories (eg, stimuli).
@@ -143,18 +168,33 @@ class Binned:
         from_dict_of_folded :
         
     """
-    def __init__(self, counts, trials, edges=None, t=None):
+    def __init__(self, counts, trials, columns=None, edges=None, t=None):
+        """Prefer initialization with edges, but not t"""
         # Convert to DataFrame (unless already is)
         self.counts = pandas.DataFrame(counts)
         self.trials = pandas.DataFrame(trials)
-        self.columns = self.counts.columns
+        
+        # Initialize category names
+        if columns is None:
+            self.columns = self.counts.columns
+            assert np.all(
+                self.counts.columns.values == self.trials.columns.values)
+        else:
+            self.columns = columns
+            self.counts.columns = columns
+            self.trials.columns = columns
         
         # set up time points
         if t is None and edges is None:
+            # Nothing provided ... guess
             self.t = np.arange(counts.shape[0])
+            self.edges = np.arange(counts.shape[0] + 1)
         elif t is None and edges is not None:
+            # edges provided, calculate t
             self.t = edges[:-1] + np.diff(edges) / 2.
+            self.edges = edges
         else:
+            # only t provided, or both are provided
             self.edges = edges
             self.t = t
         
@@ -162,108 +202,102 @@ class Binned:
         self.rate = counts / trials.astype(np.float)
     
     @classmethod
-    def from_folded(self, folded, starts=None, stops=None, durations=None,
-        bins=None):
-        """Given a list of locked spike-times, bin.
-
+    def from_folded(self, folded, bins=None, starts=None, stops=None):
+        """Construct Binned object by histogramming list-like Folded.
+        
+        This returns a Binned with one category. To return multiple categories,
+        see from_dict_of_folded
+        
         Variables:
         folded : list-like, each entry is an array of locked times
+        bins : passed to np.histogram. We also pass the `range` attribute
+            of `folded` to histogram. This means that you can specify bins
+            exactly (in which case `range` is ignored), or you can specify
+            a number of bins (in which case `range` is used to ensure
+            consistent bin sizes regardless of when spikes occurred). This
+            assumes the `range` attribute of `folded` is specified correctly...
+        
+        The following attributes are collected from `folded` if available,
+        or otherwise you can specify them as arguments.
         starts : list-like, same length as `folded`, the time at which 
             spike collection began for each trial
-        stops, durations : when the spike collection ended for each trial
-
-        TODO: issue warning if spikes occured outside of starts and stops
-
-        Returns:
-            Binned object containg counts and trials
-
-        Recast this as a data transformation from
-        * Representation 1: list of spike times, grouped by trial number
-            One limitation of this representation is that there is no indication
-            of the epoch over which the spike times might have come.
-        * Representation 2: binned spike times, with trials in columns
-            Thus, return a single DataFrame (or other sort of object) instead
-            of the various ones returned here.
+        stops : when the spike collection ended for each trial
         
-        Also write other methods that do the same transformation but via
-        smoothing instead of binning.
+        The purpose of these attributes is to construct the attribute
+        `trials`, which contains the number of trials in each bin.
         """
-        # Iterate over the provided trials
-        counts, edges = np.histogram(np.concatenate(folded), bins=bins)
+        # Get trial times from object if necessary
+        if starts is None:
+            starts = np.asarray(folded.starts)
         
         if stops is None:
-            stops = starts + durations
+            stops = np.asarray(folded.stops)
         
-        # count trials included in each bin
-        trials = np.array([np.sum((stops - starts) > e) for e in edges[:-1]])
+        # Determine range
+        try:
+            range = folded.range
+        except AttributeError:
+            range = None
+        
+        # Put all the trials together (try to make it work for lists too)
+        try:
+            cc = pandas.concat(folded)
+            times = cc.time
+        except:
+            times = np.concatenate(folded)
 
+        # Here is the actual histogramming
+        counts, edges = np.histogram(cc.time, bins=bins, range=range)
+        
+        # Now we calculate how many trials are included in each bin
+        trials = np.array([np.sum((stops - starts) > e) for e in edges[:-1]])
+        
+        # Now construct and return
         return Binned(counts=counts, trials=trials, edges=edges)
     
     @classmethod
-    def from_dict_of_folded(self, dfolded, starts=None, stops=None, durations=None,
-        bins=None):
-        """Given a list of locked spike-times, bin.
-
-        Variables:
-        dfolded : dict {trial_label : array of locked spike times}
-        starts : dict {trial_label : start times of each trial}
-            if None, then assume start and stop equal to bins
-        stops : dict {trial_label : stop times of each trial}
-            if None, then assume start and stop equal to bins
-
-        Returns:
-            counts, each trial is a column
-            trials
-            smoothed
-
-        Recast this as a data transformation from
-        * Representation 1: list of spike times, grouped by trial number
-            One limitation of this representation is that there is no indication
-            of the epoch over which the spike times might have come.
-        * Representation 2: binned spike times, with trials in columns
-            Thus, return a single DataFrame (or other sort of object) instead
-            of the various ones returned here.
+    def from_dict_of_folded(self, dfolded, keys=None, bins=None):
+        """Initialize a Binned from a dict of Folded over various categories
         
-        Also write other methods that do the same transformation but via
-        smoothing instead of binning.
+        The category labels will be the keys to dfolded.
         """
-        # Create return values
-        counts_l = []
-        trials_l = []
-        
-        try:
+        if keys is None:
             keys = dfolded.keys()
-        except AttributeError:
-            keys = range(len(dfolded))
         
-        #~ binned = Binned(columns=keys)
-        #~ for key in keys:
-            #~ folded = dfolded[key]
-            #~ binned[key] = from_folded(dfolded[key], starts=starts[key], 
-                #~ stops=stops[key], bins=bins)
-        
-        # Iterate over the provided trials
-        for n, key in enumerate(keys):
-            folded = dfolded[key]
-            
-            # count spikes 
-            counts, edges = np.histogram(np.concatenate(folded), 
-                bins=bins)
-            counts_l.append(counts)
-            
-            # how many trials were actually included
-            if starts is None and stops is None:
-                trials_l.append(np.ones(counts.shape[0], dtype=np.int) * len(folded))
-            else:
-                trials_l.append(np.array(
-                    [np.sum(stops[key] - starts[key] > e) for e in edges[:-1]]))
+        binned_d = {}
+        for key in keys:
+            binned_d[key] = Binned.from_folded(dfolded[key], bins=bins)
 
-        counts = pandas.DataFrame(data=np.asarray(counts_l).transpose(), 
-            columns=keys)
-        trials = pandas.DataFrame(data=np.asarray(trials_l).transpose(), 
-            columns=keys)
+        return Binned.from_dict_of_binned(binned_d, keys=keys)
+    
+    @classmethod
+    def from_dict_of_binned(self, dbinned, keys=None):
+        """Initialize a Binned from a dict of Binned."""
+        # If no keys specified, use all keys in sorted order
+        if keys is None:
+            keys = sorted(dbinned.keys())
+
+        # Construct counts and trials by concatenating the underlying
+        # objects. This method actually results in a MultiIndex with the
+        # first level being `key`. We override below, though perhaps
+        # this is actually a more reasonable behavior ...
+        all_counts = pandas.concat(
+            {key: dbinned[key].counts for key in keys}, axis=1)
+        all_trials = pandas.concat(
+            {key: dbinned[key].trials for key in keys}, axis=1)
         
-        return Binned(counts=counts, trials=trials, edges=edges)
+        # The time base should be the same
+        all_edges = np.array([dbinned[key].edges for key in keys])
+        edges = all_edges[0]
+        for edges1 in all_edges:
+            assert np.all(edges1 == edges)
+        
+        # Construct (note override of column names)
+        return Binned(counts=all_counts, trials=all_trials, edges=edges,
+            columns=keys)
+    
+    
+
 
 def find_events(events, start_name, stop_name=None, t_start=None, t_stop=None):
     """Given event structure, return epochs around events of specified name.
