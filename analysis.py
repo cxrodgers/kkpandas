@@ -89,6 +89,11 @@ class Folded:
         PSTH can be calculated.    
             If not specified, uses largest starting and stopping times
             over all trials.
+        
+        TODO: have this remember whether its spike times are aligned to
+        center or not. Perhaps a different object for each behavior?
+        Or a flag to remember whether it's already been done? Or hold both
+        types of timestamps?
         """
         self.values = values
         self.starts = np.asarray(starts)
@@ -100,7 +105,7 @@ class Folded:
                 try:
                     values[0]['time']
                     dataframe_like = True
-                except KeyError:
+                except (KeyError, ValueError):
                     dataframe_like = False
         self.dataframe_like = dataframe_like
         
@@ -133,20 +138,22 @@ class Folded:
         return len(self.values)
     
     @classmethod
-    def from_flat(self, flat, starts=None, centers=None, stops=None, dstart=None,
-        dstop=None):
+    def from_flat(self, flat, starts=None, centers=None, stops=None, 
+        dstart=None, dstop=None, subtract_off_center=True):
         """Construct Folded from Flat.
         
         flat : A flat representation of spike times. It could be a simple
             array of times, or a DataFrame with a column 'time'.
         starts, centers, stops, dstart, dstop : ways of specifying trial
             windows. See `timelock`
+        subtract_off_center : whether to align events to trigger on each
+            trial
         """
         # Figure out whether input is structured or simple
         dataframe_like = True
         try:
             spike_times = flat['time']
-        except KeyError:
+        except (KeyError, ValueError):
             spike_times = flat
             dataframe_like = False
     
@@ -167,7 +174,7 @@ class Folded:
         # Construct Folded, using trial boundaries as calculate, and
         # subtracting off triggers
         return Folded(values=res, starts=starts, stops=stops, centers=centers,
-            subtract_off_center=True)
+            subtract_off_center=subtract_off_center)
     
 
 class Binned:
@@ -199,8 +206,18 @@ class Binned:
         
         # Initialize category names
         if columns is not None:
-            self.counts.columns = columns
-            self.trials.columns = columns
+            if self.counts.columns is None:
+                # Actually this never occurs
+                # Is this a use-case?
+                self.counts.columns = columns
+            else:
+                self.counts = self.counts[columns]
+            
+            if self.trials.columns is None:
+                self.trials.columns = columns
+            else:
+                self.trials = self.trials[columns]
+            
         
         # set up time points
         if t is None and edges is None:
@@ -222,7 +239,7 @@ class Binned:
     # Wrapper functions around DataFrame methods
     def __getitem__(self, key):
         return Binned(counts=self.counts[key], trials=self.trials[key],
-            edges=self.edges)
+            t=self.t[key])
     
     def rename(self, columns=None, multi_index=True):
         """Inplace rename columns"""
@@ -330,7 +347,7 @@ class Binned:
             times = np.concatenate(folded)
 
         # Here is the actual histogramming
-        counts, edges = np.histogram(cc.time, bins=bins, range=range)
+        counts, edges = np.histogram(times, bins=bins, range=range)
         
         # Now we calculate how many trials are included in each bin
         trials = np.array([np.sum((stops - starts) > e) for e in edges[:-1]])
@@ -375,10 +392,14 @@ class Binned:
         # objects. This method actually results in a MultiIndex with the
         # first level being `key`. We override below, though perhaps
         # this is actually a more reasonable behavior ...
+        # Note this also randomizes the column order, but we'll define
+        # it in the call to Binned
         all_counts = pandas.concat(
             {key: dbinned[key].counts for key in keys}, axis=1)
+        all_counts.columns = [c[0] for c in all_counts.columns]
         all_trials = pandas.concat(
             {key: dbinned[key].trials for key in keys}, axis=1)
+        all_trials.columns = [c[0] for c in all_trials.columns]    
         
         # The time base should be the same
         all_edges = np.array([dbinned[key].edges for key in keys])
@@ -467,7 +488,9 @@ def timelock(a1, a2=None, start=None, stop=None, dstart=None, dstop=None,
             stop = np.asarray(a2) + np.asarray(dstop)
         else:
             # Method 3: greedy definition of stop
-            stop = np.concatenate([start[1:], [a1.max() + 1]])
+            # Each trial grabs up to the next start
+            # The last trial goes up to infinity
+            stop = np.concatenate([start[1:], [np.inf]])
     
     # Now some error checking
     if error_check:
