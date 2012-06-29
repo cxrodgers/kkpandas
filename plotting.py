@@ -23,11 +23,11 @@ def plot_binned(binned, ax=None, **kwargs):
     csl = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'gray']
     for n, (label, col) in enumerate(binned.rate.iteritems()):
         if 'color' in kwargs:
-            ax.plot(binned.t, col.values, **kwargs)
+            ax.plot(binned.t, col.values, label=label, **kwargs)
         else:
-            ax.plot(binned.t, col.values, color=csl[n], **kwargs)
+            ax.plot(binned.t, col.values, color=csl[n], label=label, **kwargs)
     
-    ax.legend(binned.columns, loc='best')
+    ax.legend(loc='best')
     plt.show()
     return ax
 
