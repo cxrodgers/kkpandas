@@ -1,7 +1,7 @@
 """Methods for choosing times to fold on"""
 
 import numpy as np
-
+from analysis import Folded
 
 def find_events(events, start_name, stop_name=None, t_start=None, t_stop=None):
     """Given event structure, return epochs around events of specified name.
@@ -33,3 +33,15 @@ def find_events(events, start_name, stop_name=None, t_start=None, t_stop=None):
         assert t_stop is not None
         stops = starts + t_stop
     return np.asarray(starts), np.asarray(stops)
+
+def split_events_by_state_name(events, split_state, subtract_off_center=False,
+    **kwargs):
+    """Divides up events based on a state name that you specify
+    
+    Returns Folded, split on split_state
+    """
+    starts = np.asarray(events[events.event == split_state].time)
+    res = Folded.from_flat(flat=events, starts=starts, 
+        subtract_off_center=subtract_off_center, **kwargs)
+    
+    return res
