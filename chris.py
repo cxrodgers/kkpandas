@@ -11,6 +11,8 @@ def pick_trial_numbers(trials_info, outcome='hit', nonrandom=0,
     """Returns trial numbers satisfying condition
     
     This convenience method provides common defaults for me
+    isnotnull : asserts that the provided column is not Null
+        By convention, returns those with non-null times
     """
     return analysis.panda_pick(trials_info, outcome=outcome, 
         nonrandom=nonrandom, isnotnull=isnotnull, **kwargs)
