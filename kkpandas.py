@@ -1,4 +1,26 @@
-"""Converter objects to read KlustaKwik-formatted spike times into dataframe.
+"""Methods to read KlustaKwik-formatted spike times into dataframe.
+
+Low-level
+---------
+These are just simple (but efficient) wrappers around pandas reading
+methods that add on column names, etc.
+
+read_resfile
+read_fetfile
+read_clufile
+load_spiketimes
+
+
+Medium-level
+------------
+from_KK : auto finds all relevant files in directory, methods to choose
+groups, memoization ...
+
+
+High-level
+----------
+KK_Server : object for integrating across multiple sessions / directories
+You train it on the locations of data and it deals with calling from_KK.
 """
 
 import numpy as np
@@ -155,3 +177,49 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
         data.save(memoized_filename)
 
     return data
+
+
+class KK_Server:
+    """Object to load spike data from multiple sessions (directories)"""
+    def __init__(self, session_d=None, session_list=None, parent_dir=None, 
+        group_multiplier=100, fs=30e3, **kk_kwargs):
+        """Initialize a new server"""
+        # Set up dict of sessions
+        if session_d is None:
+            session_d = {}
+            for session in session_list:
+                session_d[session] = os.path.join(parent_dir, session)
+        self.session_d = session_d
+        self.session_list = sorted(self.session_d.keys())
+        
+        # Set up calling kwargs
+        self.kk_kwargs = kk_kwargs
+        self.kk_kwargs['group_multiplier'] = group_multiplier
+        self.kk_kwargs['fs'] = fs
+    
+    def load(self, session=None, group=None, unit=None, **kwargs):
+        dirname = self.session_d[session]
+        
+        call_kwargs = self.kk_kwargs.copy()
+        call_kwargs.update(kwargs)
+        
+        spikes = from_KK(dirname, load_memoized=True, save_memoized=True,
+            **self.kk_kwargs)
+        
+        # Make this panda pick
+        sub = spikes[spikes.unit == unit]
+    
+        return sub
+    
+    def save(self, filename):
+        """Saves information for later use"""
+        pass
+    
+    def flush(self):
+        """Delete all pickled data and start over"""
+        pass
+    
+    @classmethod
+    def from_saved(self, filename):
+        """Load server from saved information"""
+        pass
