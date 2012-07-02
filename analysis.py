@@ -117,9 +117,12 @@ class Folded:
         
         # Store or calculate range
         if range is None:
-            t_start = np.min(starts - centers)
-            t_stop = np.max(stops - centers)
-            self.range = (t_start, t_stop)
+            try:
+                t_start = np.min(starts - centers)
+                t_stop = np.max(stops - centers)
+                self.range = (t_start, t_stop)
+            except ValueError:
+                self.range = None
         else:
             self.range = range
         
@@ -238,6 +241,8 @@ class Binned:
     
     # Wrapper functions around DataFrame methods
     def __getitem__(self, key):
+        """This actually needs to work for either time indexes or 
+        column names indexes"""
         return Binned(counts=self.counts[key], trials=self.trials[key],
             t=self.t[key])
     
@@ -344,7 +349,11 @@ class Binned:
             cc = pandas.concat(folded)
             times = cc.time
         except:
-            times = np.concatenate(folded)
+            try:
+                times = np.concatenate(folded)
+            except ValueError:
+                # all empty?
+                times = np.array([])
 
         # Here is the actual histogramming
         counts, edges = np.histogram(times, bins=bins, range=range)
