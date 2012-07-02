@@ -133,8 +133,19 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
     # Convert to dict Folded representation with trial numbers as labels
     tn2ev = dict(zip(rss.btrial_numbers, f))
     
-    # Take advantage of the fact that trial numbers are the link between
-    # picked_trials_l and tn2ev to
+    # Here is the link between behavior and neural
+    # We have picked_trials_l, a list of trial numbers selected from behavior
+    # And tn2ev, a dict keyed on trial numbers that actually occurred in
+    # neural recording
+    # We need to pick out events from each of the trials in each category
+    # But first we need to drop trials that never actually occurred from
+    # pick_trials_l
+    for n in range(len(picked_trials_l)):
+        picked_trials_l[n] = (
+            picked_trials_l[n][0],
+            picked_trials_l[n][1][
+            np.in1d(picked_trials_l[n][1], rss.btrial_numbers)])
+
     # Iterate over picked_trials_l and extract time from each trial
     label2timelocks = {}
     for label, trial_numbers in picked_trials_l:
