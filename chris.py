@@ -10,12 +10,11 @@ from analysis import Folded
 
 # TRIALS_INFO picking functions with my defaults
 def pick_trial_numbers(trials_info, outcome='hit', nonrandom=0, 
-    isnotnull='time', **kwargs):
+    isnotnull=None, **kwargs):
     """Returns trial numbers satisfying condition
     
     This convenience method provides common defaults for me
     isnotnull : asserts that the provided column is not Null
-        By convention, returns those with non-null times
     """
     return analysis.panda_pick(trials_info, outcome=outcome, 
         nonrandom=nonrandom, isnotnull=isnotnull, **kwargs)
@@ -50,34 +49,67 @@ def names2multilevel(df):
     return df
 
 
-
-class BlockTrialPicker:
-    """Given trials_info, returns (label, trial_numbers) for blocks"""
+class TrialPicker:    
     @classmethod
-    def pick(self, trials_info):
-        keys = ('LB', 'PB')
-        kwargs_l = ({'block': 2}, {'block': 4})
-        meth = pick_trial_numbers
+    def pick(self, trials_info, labels=None, label_kwargs=None, 
+        **all_kwargs):
+        if labels is None:
+            labels = self.labels
+        if label_kwargs is None:
+            label_kwargs = self.label_kwargs
+        
+        assert len(labels) == len(label_kwargs)
         
         res = []
-        for key, kwargs in zip(keys, kwargs_l):
-            res.append((key, meth(trials_info, isnotnull=None, **kwargs)))
+        for label, kwargs in zip(labels, label_kwargs):
+            kk = kwargs.copy()
+            kk.update(all_kwargs)
+            val = self._pick(trials_info, **kk)
+            res.append((label, val))
+        
         return res
+    
+    @classmethod
+    def _pick(self, *args, **kwargs):
+        return pick_trial_numbers(*args, **kwargs)
+
+class BlockTrialPicker(TrialPicker):
+    """Given trials_info, returns (label, trial_numbers) for blocks"""
+    labels = ('LB', 'PB')
+    label_kwargs = ({'block': 2}, {'block': 4})
+
+class StimulusTrialPicker(TrialPicker):
+    """Given trials_info, returns (label, trial_numbers) for blocks"""
+    labels = LBPB.stimnames
+    label_kwargs = tuple([{'stim_name' : sn} for sn in LBPB.stimnames])
+
 
 class EventTimePicker:
     """Given event name and folded events_info, returns times to lock on"""
     @classmethod
     def pick(self, event_name, trials_l):
         res = []
+        w, w2 = False, False
         for trial in trials_l:
-            val = analysis.panda_pick_data(trial, event=event_name).time.item()
-            res.append(val)
+            val = analysis.panda_pick_data(trial, event=event_name).time
+            if len(val) > 1:
+                w2 = True
+                res.append(val.values[0])
+            elif len(val) == 0:
+                w = True
+            else:
+                res.append(val.item())
+        
+        if w:
+            print "warning: some events did not occur"
+        if w2:
+            print "warning: multiple events detected on some trials"
         return res
 
 # something like this should be the analysis pipeline
 def pipeline_overblock_oneevent(kkserver, session, unit, rs,
-    trial_picker=BlockTrialPicker,
-    evname='play_stimulus_in'):
+    trial_picker=BlockTrialPicker, trial_picker_kwargs=None,
+    evname='play_stimulus_in', folding_kwargs=None):
     
     # And a trial_server object?
     trials_info = io.load_trials_info(rs.full_path)
@@ -89,7 +121,9 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
 
     
     # Select trials from behavior
-    picked_trials_l = BlockTrialPicker.pick(trials_info)
+    if trial_picker_kwargs is None:
+        trial_picker_kwargs = {}
+    picked_trials_l = trial_picker.pick(trials_info, **trial_picker_kwargs)
     
     # Fold events structure on start times
     rss = RS_Syncer(rs)
@@ -110,14 +144,15 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
         # Get timelock times by applying a function to each entry (put this in Folded)
         times = EventTimePicker.pick(evname, trials)
         
-        label2timelocks[labe] = times
+        label2timelocks[label] = times
     
     # Now fold out over timelocked times
-    res = {}
+    if folding_kwargs is None: 
+        folding_kwargs = {}
+    res = {}    
     for label, timelocks in label2timelocks.items():
         # Now fold spike times on timelock times    
         res[label] = Folded.from_flat(
-            flat=spikes, centers=timelocks, dstart=-.25,
-            dstop=.25)
+            flat=spikes, centers=timelocks, **folding_kwargs)
 
     return res
