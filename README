@@ -1,14 +1,59 @@
-This project allows you to read KlustaKwik or Klusters formatted data files into Python.
+This project defines representations for event (or spike) times around
+trials. It also provides I/O from KlustaKwik-style data files.
 
 
-KKFileSchema: an object that handles interaction with filesystem to check for which KK files exist and does some simple error checking. Pure Python!
+KlustaKwik I/O modules (independent of the rest of the project):
+---
+If you just want to load data and you have your own analysis functions:
+    from kkpandas import kkio, KKFileSchema
+    spikes = kkio.from_KK(path_to_KK_files)
 
-kkpandas: a module that actually does the reading of the files and formats them into pandas DataFrame. The main function to use for this is:
+I chose to use the pandas module for this because the DataFrame object is a 
+rich way to deal with structured data like this, and also because the plaintext 
+reading functions in pandas appear to be much faster than numpy/matplotlib 
+equivalents for this application. Still you will find that the speed of 
+reading plaintext is the rate-limiting step.
+
+KKFileSchema: an object that handles interaction with filesystem to check 
+for which KK files exist and does some simple error checking. Pure Python!
+
+kkio: a module that actually does the reading of the files and formats 
+them into pandas DataFrame. The main function to use for this is:
     kkpandas.from_KK(path_to_klusters_files)
 
-I chose to use the pandas module for this because the DataFrame object is a rich way to deal with structured data like this, and also because the plaintext reading functions in pandas appear to be much faster than numpy/matplotlib equivalents for this application. Still you will find that the speed of reading plaintext is the rate-limiting step.
 
-There has been some drift in the KK file format specification over time. For instance, Klusters *requires* that the last column in the fetfile be the list of spike times, and that the number of features include this time, even though this is not a true feature of the spike. (Thanks to John Schulman for pointing this out.) Also, the xml file that Klusters uses disallows the use of a group numbered `0` and essentially insists that you start with 1.
+There has been some drift in the KK file format specification over time. 
+For instance, Klusters *requires* that the last column in the fetfile be 
+the list of spike times, and that the number of features include this time, 
+even though this is not a true feature of the spike. (Thanks to John Schulman 
+for pointing this out.) Also, the xml file that Klusters uses disallows the 
+use of a group numbered `0` and essentially insists that you start with 1.
+
+
+Spiketrain Representations
+---
+base : Defines the basic data types for folding and binning across trials
+
+
+Analysis Pipeline
+---
+pipeline : Wrapper objects controlling the analysis of spiketrains, from
+selection of neurons and trials, to binning and smoothing over arbitrary
+categories.
+
+timepickers : ways to choose trials or events from trials
+
+io : loading of event information and trial information
+
+plotting : ways to visualize the results
+
+
+Other
+---
+utility.py : efficient ways to select from DataFrame or lock to events, etc
+
+chris.py : inherited objects specialized for my experiments
+
 
 
 Chris Rodgers

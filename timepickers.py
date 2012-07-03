@@ -1,8 +1,71 @@
-"""Methods for choosing times to fold on"""
+"""Methods for choosing times to fold on
+
+This module defines ways of choosing trials or choosing times to fold
+spikes or events on.
+
+This is where the pipeline definition is for now as well
+
+I'll try to keep this module agnostic to the parameters of any specific task,
+but note that it uses the variables `events` and `trials_info` as loaded by 
+the io module.
+"""
 
 import numpy as np
-from analysis import Folded
+from base import Folded
+import utility
 
+
+class TrialPicker:    
+    @classmethod
+    def pick(self, trials_info, labels=None, label_kwargs=None, 
+        **all_kwargs):
+        if labels is None:
+            labels = self.labels
+        if label_kwargs is None:
+            label_kwargs = self.label_kwargs
+        
+        assert len(labels) == len(label_kwargs)
+        
+        res = []
+        for label, kwargs in zip(labels, label_kwargs):
+            kk = kwargs.copy()
+            kk.update(all_kwargs)
+            val = self._pick(trials_info, **kk)
+            res.append((label, val))
+        
+        return res
+    
+
+
+
+
+
+class EventTimePicker:
+    """Given event name and folded events_info, returns times to lock on"""
+    @classmethod
+    def pick(self, event_name, trials_l):
+        res = []
+        w, w2 = False, False
+        for trial in trials_l:
+            val = utility.panda_pick_data(trial, event=event_name).time
+            if len(val) > 1:
+                w2 = True
+                res.append(val.values[0])
+            elif len(val) == 0:
+                w = True
+            else:
+                res.append(val.item())
+        
+        if w:
+            print "warning: some events did not occur"
+        if w2:
+            print "warning: multiple events detected on some trials"
+        return res
+
+
+
+# Other time-picking methods
+# Actually not using these at the moment but they may come in handy later
 def find_events(events, start_name, stop_name=None, t_start=None, t_stop=None):
     """Given event structure, return epochs around events of specified name.
     

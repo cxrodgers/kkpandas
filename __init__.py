@@ -1,11 +1,13 @@
-# klustakwik-loading functions .. probably change this filename
-from kkpandas import *
+# klustakwik-loading functions 
+from kkio import *
 
 # These are the main data structures (should probably be moved to base.py)
-from analysis import Folded, Binned
+from base import Folded, Binned
 
 # Bring in the other files
-import analysis
+import utility
+import timepickers
+import pipeline
 import io
 import chris
 import plotting
