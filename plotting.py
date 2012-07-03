@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 def plot_binned_by_level(binned, ax=None):
     if ax is None:
@@ -25,7 +25,8 @@ def plot_binned(binned, ax=None, **kwargs):
         if 'color' in kwargs:
             ax.plot(binned.t, col.values, label=label, **kwargs)
         else:
-            ax.plot(binned.t, col.values, color=csl[n], label=label, **kwargs)
+            color = csl[np.mod(n, len(csl))]
+            ax.plot(binned.t, col.values, color=color, label=label, **kwargs)
     
     ax.legend(loc='best')
     plt.show()
