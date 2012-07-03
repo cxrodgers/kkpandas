@@ -24,7 +24,7 @@ continuously valued functions of time, by binning or smoothing for instance.
 
 import numpy as np
 import pandas
-from analysis import timelock
+from utility import timelock
 
 class Folded:
     """Stores spike times on each trial timelocked to some event in that trial.
