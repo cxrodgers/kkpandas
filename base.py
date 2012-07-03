@@ -162,6 +162,8 @@ class Binned:
         from_dict_of_folded :
         
     """
+    _FLOAT_EQ_ERR = 1e-7
+    
     def __init__(self, counts, trials, columns=None, edges=None, t=None):
         """Prefer initialization with edges, but not t"""
         # Convert to DataFrame (unless already is)
@@ -373,9 +375,10 @@ class Binned:
         
         # The time base should be the same
         all_edges = np.array([dbinned[key].edges for key in keys])
-        edges = all_edges[0]
-        for edges1 in all_edges:
-            assert np.all(edges1 == edges)
+        edges = np.mean(all_edges, axis=0)
+        err = np.max(np.abs(all_edges - edges))
+        if err > self._FLOAT_EQ_ERR:
+            raise ValueError("dict of binned appear not to share timebase")
         
         # Construct (note override of column names)
         return Binned(counts=all_counts, trials=all_trials, edges=edges,
