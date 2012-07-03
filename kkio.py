@@ -212,8 +212,17 @@ class KK_Server:
         return sub
     
     def save(self, filename):
-        """Saves information for later use"""
-        pass
+        """Saves information for later use
+        
+        All that is necessary to reconsitute this object is session_d
+        and kk_kwargs
+        """
+        import cPickle
+        to_pickle = {
+            'session_d': self.session_d, 
+            'kk_kwargs': self.kk_kwargs}
+        with file(filename, 'w') as fi:
+            cPickle.dump(to_pickle, fi)
     
     def flush(self):
         """Delete all pickled data and start over"""
@@ -222,4 +231,13 @@ class KK_Server:
     @classmethod
     def from_saved(self, filename):
         """Load server from saved information"""
-        pass
+        import cPickle
+        with file(filename) as fi:
+            res = cPickle.load(fi)
+        
+        session_d = res['session_d']
+        kk_kwargs = res['kk_kwargs']
+        
+        res = KK_Server(session_d=session_d)
+        res.kk_kwargs = kk_kwargs
+        return res
