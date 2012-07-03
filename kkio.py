@@ -37,7 +37,14 @@ def read_resfile(filename):
     """Returns spiketimes in samples as Series"""
     return pandas.read_table(filename, names=['spike_time'])['spike_time']
 
-def read_fetfile(filename, guess_time_column=True):
+def write_resfile(df, filename):
+    """Returns spiketimes in samples as Series"""
+    with file(filename, 'w') as fi:
+        df.tofile(fi, sep="\n")
+        fi.write('\n')
+
+
+def read_fetfile(filename, guess_time_column=True, return_nfeatures=False):
     """Reads features from fet file.
     
     If guess_time_column, will look at the last column and if it contains
@@ -59,11 +66,75 @@ def read_fetfile(filename, guess_time_column=True):
     # Here is where code to drop unwanted features would go, based on
     # n_features
     
-    return data
+    if return_nfeatures:
+        return data, n_features
+    else:
+        return data
+
+def write_fetfile(df, filename, also_write_times=True, 
+    count_time_as_feature=True):
+    """Write out features to fetfile.
+    
+    also_write_times: Write spike times as another row of feature file
+    count_time_as_feature: Include the spike time in the feature count
+
+    Notes
+    -----
+    To view the files in Klusters, you must set both also_write_times
+    and count_time_as_feature to True. This is a bug in Klusters though,
+    bceause you wouldn't actually want to use the spike time as a feature
+    for clustering.
+    """
+    if 'spike_time' not in df.columns and also_write_times:
+        print "warning: no spike times provided to write"
+        also_write_times = False
+    
+    cols = df.columns
+    if also_write_times:
+        if count_time_as_feature:
+            n_features = df.shape[1]
+        else:
+            n_features = df.shape[1] - 1
+    elif 'spike_time' in df.columns:
+        # Drop the spike times before writing
+        cols = cols.drop(['spike_time'])
+        n_features = df.shape[1] - 1
+    else:
+        n_features = df.shape[1]
+    
+    with file(filename, 'w') as fi:
+        fi.write("%d\n" % n_features)
+        df.to_csv(fi, sep=' ', cols=cols, header=False, index=False)
 
 def read_clufile(filename):
     """Returns cluster ids as Series"""
     return pandas.read_table(filename, skiprows=1, names=['unit'])['unit']
+
+def write_clufile(df, filename):
+    """Write cluster DataFrame as a *.clu file"""
+    nclusters = len(df.unique())
+    
+    with file(filename, 'w') as fi:
+        fi.write("%d\n" % nclusters)
+        df.tofile(fi, sep="\n")
+        fi.write("\n")
+
+def read_spkfile(filename, n_spikes=-1, n_samples=-1,  n_channels=-1):
+    """Returns waveforms as 3d array (n_spk, n_samp, n_chan)
+    You can leave at most one shape parameter as -1
+    """
+    waveforms = np.fromfile(filename, dtype=np.int16)
+    return waveforms.reshape((n_spikes, n_samples, n_channels))
+
+def write_spkfile(waveforms, filename):
+    """Writes waveforms to binary file
+    
+    waveforms : 3d array (n_spk, n_samp, n_chan)
+    
+    It will be converted to int16 before writing.
+    """
+    waveforms.astype(np.int16).tofile(filename)
+
 
 def load_spiketimes(kfs_or_path, group, fs=None):
     """Given KKFileSchema or path to one, load spike times from group
@@ -85,6 +156,28 @@ def load_spiketimes(kfs_or_path, group, fs=None):
         spiketimes = spiketimes / float(fs)    
     
     return spiketimes
+
+
+def read_all_from_group(basename='.', group=1, n_samples=-1, n_spikes=-1,
+    n_channels=-1):
+    d = {}
+    kfs = KKFileSchema.coerce(basename)
+    res = read_resfile(kfs.resfiles[group])
+    d['res'] = res
+    clu = read_clufile(kfs.clufiles[group])
+    d['clu'] = clu
+    fet = read_fetfile(kfs.fetfiles[group])
+    d['fet'] = fet
+    
+    if n_spikes == -1:
+        n_spikes = len(res)
+    spk = read_spkfile(kfs.spkfiles[group], n_spikes=n_spikes,
+        n_channels=n_channels, n_samples=n_samples)
+    d['spk'] = spk
+
+    
+    return d
+    
 
 # This is the main function to intelligently load data from KK files
 def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
@@ -241,3 +334,57 @@ class KK_Server:
         res = KK_Server(session_d=session_d)
         res.kk_kwargs = kk_kwargs
         return res
+
+
+# Utility function for testing something, also demonstrates the usage
+# of the reading and writing methods.
+def append_duplicated_spikes(data_dir, output_dir, groupnum, idxs, n_samples=24):
+    """Appends a fake neuron of duplicated spikes.
+    
+    This is useful for testing whether some of the spikes are all in one
+    part of the cluster, which might suggest drift or bad clustering.
+    
+    data_dir : klusters directory of original data (will not be modified)
+    output_dir : klusters directory containing copy of original data
+        (THIS ONE WILL BE MODIFIED!)
+        Copy over all clu, fet, res, etc files to the new directory.
+    
+    groupnum : tetrode number, ie extension of klusters files to modify
+    
+    idxs : indexes of spikes to duplicate as a new cluster
+        This functions doesn't know which unit you are trying to clone (if
+        any), so the indexes should be indexes into ALL of the spikes from
+        the group.
+    
+    It will extract the times, features, and waveforms of the indexed spikes,
+    then append them to the end of the same files in output_dir.
+    
+    The new cluster has an ID one greater than previous max.
+    """
+    # find files
+    kfs1 = KKFileSchema.coerce(data_dir)
+    kfs2 = KKFileSchema.coerce(output_dir)
+    
+    # Duplicate clu
+    clu = kkpandas.kkio.read_clufile(kfs1.clufiles[groupnum])
+    newclunum = clu.max() + 1
+    newclu = pandas.concat([clu, 
+        pandas.Series(newclunum * np.ones(len(idxs)), dtype=np.int)], 
+        ignore_index=True)
+    kkpandas.kkio.write_clufile(newclu, kfs2.clufiles[groupnum])
+    
+    # Duplicate res
+    res = kkpandas.kkio.read_resfile(kfs1.resfiles[groupnum])
+    newres = pandas.concat([res, res.ix[idxs]], ignore_index=True)
+    kkpandas.kkio.write_resfile(newres, kfs2.resfiles[groupnum])
+    
+    # Duplicate fet
+    fet = kkpandas.kkio.read_fetfile(kfs1.fetfiles[groupnum])
+    newfet = pandas.concat([fet, fet.ix[idxs]], ignore_index=True)
+    kkpandas.kkio.write_fetfile(newfet, kfs2.fetfiles[groupnum])
+    
+    # Duplicate spk
+    spk = kkpandas.kkio.read_spkfile(kfs1.spkfiles[groupnum], n_samples=24,
+        n_spikes=fet.shape[0])
+    newspk = np.concatenate([spk, spk[idxs, :]], axis=0)
+    kkpandas.kkio.write_spkfile(newspk, kfs2.spkfiles[groupnum])

@@ -74,11 +74,13 @@ class KKFileSchema:
         self._force_reload = False
     
     def filenames(self, ext='fet'):
+        """Return filenames of a specified extension"""
         if self._force_reload:
             self.populate()
         return self._filenamed[ext]
     
     def filenumbers(self, ext='fet'):
+        """Return filenumbers of a specified extension"""
         if self._force_reload:
             self.populate()
         return self._filenumberd[ext]
@@ -101,6 +103,10 @@ class KKFileSchema:
     @property
     def resfiles(self):
         return dict(zip(self.filenumbers('res'), self.filenames('res')))
+
+    @property
+    def spkfiles(self):
+        return dict(zip(self.filenumbers('spk'), self.filenames('spk')))
 
     @classmethod
     def coerce(self, kfs_or_path):
