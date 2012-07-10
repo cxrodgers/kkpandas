@@ -328,7 +328,7 @@ class Binned:
         return Binned(counts=counts, trials=trials, edges=edges)
     
     @classmethod
-    def from_dict_of_folded(self, dfolded, keys=None, bins=None):
+    def from_dict_of_folded(self, dfolded, keys=None, bins=100, binwidth=None):
         """Initialize a Binned from a dict of Folded over various categories
         
         Simple wrapper function that creates a Binned from each Folded,
@@ -338,10 +338,28 @@ class Binned:
             that category
         keys : ordered category names that you wish to include. If None,
             uses dfolded.keys()
-        bins : number or array, passed to from_folded
+        bins : number or array
+            If you wish to specify bins exactly, pass as array
+            If you specify the number of bins, then in order to keep the
+            time base consistent, the `range` attribute of each folded
+            is queried and the smallest interval covering all ranges is used.
+        binwidth: width of bin in seconds
+            If you specify bins as a number and binwidth, binwidth dominates.
         """
         if keys is None:
             keys = dfolded.keys()
+        
+        # Auto set the bins
+        if not np.iterable(bins):
+            # Determine spanning range
+            all_ranges = np.array([val.range for val in dfolded.values()])
+            range = (all_ranges[:, 0].min(), all_ranges[:, 1].max())
+        
+            # Set via width or number
+            if binwidth is None:
+                bins = np.linspace(range[0], range[1], bins)
+            else:
+                bins = np.arange(range[0], range[1], binwidth)
         
         binned_d = {}
         for key in keys:
