@@ -29,13 +29,15 @@ import os.path
 import glob
 from KKFileSchema import KKFileSchema
 
+SPIKE_TIME_COLUMN_NAME = 'time'
 
 # Bare-bones input/output functions for each filetype
 # We use pandas loading functions because they are much faster for
 # this type of data than equivalent functions in matplotlib
 def read_resfile(filename):
     """Returns spiketimes in samples as Series"""
-    return pandas.read_table(filename, names=['spike_time'])['spike_time']
+    return pandas.read_table(
+        filename, names=[SPIKE_TIME_COLUMN_NAME])[SPIKE_TIME_COLUMN_NAME]
 
 def write_resfile(df, filename):
     """Returns spiketimes in samples as Series"""
@@ -61,7 +63,8 @@ def read_fetfile(filename, guess_time_column=True, return_nfeatures=False):
     
     # Auto-guess whether the last column is a time (it probably is)
     if guess_time_column and np.all(data[data.columns[-1]] > 0):    
-        data = data.rename(columns={data.columns[-1]: 'spike_time'}, copy=False)
+        data = data.rename(columns={data.columns[-1]: SPIKE_TIME_COLUMN_NAME}, 
+            copy=False)
     
     # Here is where code to drop unwanted features would go, based on
     # n_features
@@ -85,7 +88,7 @@ def write_fetfile(df, filename, also_write_times=True,
     bceause you wouldn't actually want to use the spike time as a feature
     for clustering.
     """
-    if 'spike_time' not in df.columns and also_write_times:
+    if SPIKE_TIME_COLUMN_NAME not in df.columns and also_write_times:
         print "warning: no spike times provided to write"
         also_write_times = False
     
@@ -95,9 +98,9 @@ def write_fetfile(df, filename, also_write_times=True,
             n_features = df.shape[1]
         else:
             n_features = df.shape[1] - 1
-    elif 'spike_time' in df.columns:
+    elif SPIKE_TIME_COLUMN_NAME in df.columns:
         # Drop the spike times before writing
-        cols = cols.drop(['spike_time'])
+        cols = cols.drop([SPIKE_TIME_COLUMN_NAME])
         n_features = df.shape[1] - 1
     else:
         n_features = df.shape[1]
@@ -147,7 +150,7 @@ def load_spiketimes(kfs_or_path, group, fs=None):
     if 'res' in kfs.available_filetypes:
         spiketimes = read_resfile(kfs.resfiles[group])
     elif 'fet' in kfs.available_filetypes:
-        spiketimes = read_fetfile(kfs.fetfiles[group])['spike_time']
+        spiketimes = read_fetfile(kfs.fetfiles[group])[SPIKE_TIME_COLUMN_NAME]
     else:
         raise ValueError("no available method to grab spike times")
     
@@ -182,7 +185,7 @@ def read_all_from_group(basename='.', group=1, n_samples=-1, n_spikes=-1,
 # This is the main function to intelligently load data from KK files
 def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
     verify_unique_clusters=True, add_group_as_column=True, 
-    load_memoized=True, save_memoized=True):
+    load_memoized=False, save_memoized=False):
     """Main function for loading KlustaKwik data.
     
     basename : path to, or basename of, files
@@ -198,13 +201,26 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
         cluster ids across groups
     add_group_as_column : if True, then the returned value has a column
         for the group from which the spike came.
+    
+    Memoization
+    ---
+    Loading is faster if it is done using the binary pandas save and load 
+    functions than it is with the ASCII KlustaKwik format. For this reason
+    you can specify that the data be saved as a pandas file, or loaded from
+    a pandas file.
+    
+    These options now default to False because of the potential for accidental
+    mis-use. The reason is that no checking is done whether the current
+    parameters are the same as the previous ones, when the memoization was
+    done.
+    
     load_memoized : If a file like basename.kkp exists, load this DataFrame
         and return. Note all other parameters (except basename) are ignored.
     save_memoized : the data will be written to a file like
         basename.kkp after loading.
     
     Returns:
-        DataFrame with columns 'unit', 'spike_time', and optionally 'group'
+        DataFrame with columns 'unit', 'time', and optionally 'group'
     """
     # load files like basename
     kfs = KKFileSchema.coerce(basename)
