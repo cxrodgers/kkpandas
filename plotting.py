@@ -48,17 +48,18 @@ def plot_psth_with_rasters_from_dict(
     plt.show()
 
 def plot_psth_with_rasters(folded, smoothed=None, bins=None, ax=None):
-    plot_rasters(folded, ax=ax)
+    ax = plot_rasters(folded, ax=ax)
     
     if smoothed is None:
         smoothed = Binned.from_folded(folded, bins=bins)
     ax.plot(smoothed.t, smoothed.rate)
     
 
-def plot_rasters(folded, ax=None, full_range=1.0, y_offset=0.0, plot_kwargs=None):
+def plot_rasters(folded_spike_times, ax=None, full_range=1.0, 
+    y_offset=0.0, plot_kwargs=None):
     """Plots raster of spike times or psth object.
     
-    folded : Folded, or any list of arrays of time-locked spike times
+    folded_spike_times : Folded, or any list of arrays of time-locked spike times
     ax : axis object to plot into
     plot_kwargs : any additional plot specs. Defaults:
         if 'color' not in plot_kwargs: plot_kwargs['color'] = 'k'
