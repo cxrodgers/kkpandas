@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from base import Binned
 
 def plot_binned_by_level(binned, ax=None):
     if ax is None:
@@ -47,9 +48,46 @@ def plot_psth_with_rasters_from_dict(
     plt.show()
 
 def plot_psth_with_rasters(folded, smoothed=None, bins=None, ax=None):
-    myutils.plot_rasters(folded, ax=ax)
+    plot_rasters(folded, ax=ax)
     
     if smoothed is None:
         smoothed = Binned.from_folded(folded, bins=bins)
     ax.plot(smoothed.t, smoothed.rate)
     
+
+def plot_rasters(folded, ax=None, full_range=1.0, y_offset=0.0, plot_kwargs=None):
+    """Plots raster of spike times or psth object.
+    
+    folded : Folded, or any list of arrays of time-locked spike times
+    ax : axis object to plot into
+    plot_kwargs : any additional plot specs. Defaults:
+        if 'color' not in plot_kwargs: plot_kwargs['color'] = 'k'
+        if 'ms' not in plot_kwargs: plot_kwargs['ms'] = 4
+        if 'marker' not in plot_kwargs: plot_kwargs['marker'] = '|'
+        if 'ls' not in plot_kwargs: plot_kwargs['ls'] = 'None'    
+    full_range: y-value of top row (last trial), default 1.0
+    
+    Returns the axis in which it was plotted
+    """
+    # build axis
+    if ax is None:
+        f = plt.figure(); ax = f.add_subplot(111)
+    
+    # plotting defaults
+    if plot_kwargs is None:
+        plot_kwargs = {}
+    if 'color' not in plot_kwargs: plot_kwargs['color'] = 'k'
+    if 'ms' not in plot_kwargs: plot_kwargs['ms'] = 4
+    if 'marker' not in plot_kwargs: plot_kwargs['marker'] = '|'
+    if 'ls' not in plot_kwargs: plot_kwargs['ls'] = 'None'
+    
+    if full_range is None:
+        full_range = float(len(folded_spike_times))
+    
+    for n, trial_spikes in enumerate(folded_spike_times):
+        ax.plot(trial_spikes, 
+            y_offset + np.ones(trial_spikes.shape, dtype=np.float) * 
+            n / float(len(folded_spike_times)) * full_range,
+            **plot_kwargs)
+    
+    return ax
