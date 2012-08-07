@@ -154,6 +154,8 @@ def panda_pick(df, isnotnull=None, **kwargs):
         in acceptable_values.
     
     If acceptable_values is None, then that test is skipped.
+        Note that this means there is currently no way to select rows that
+        ARE none in some column.
     
     If acceptable_values is a single string or value (instead of a list), 
     then the returned rows must contain that single string or value.
