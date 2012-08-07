@@ -25,7 +25,7 @@ You train it on the locations of data and it deals with calling from_KK.
 
 import numpy as np
 import pandas
-import os.path
+import os
 import glob
 from KKFileSchema import KKFileSchema
 
@@ -287,6 +287,21 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
 
     return data
 
+def flush(kfs_or_path, verbose=False):
+    """Remove any memoized file (basename.kkp) from the directory."""    
+    # Coerce to file schema
+    kfs = KKFileSchema.coerce(kfs_or_path)    
+    
+    # Find the memoized file
+    to_delete = kfs.basename + '.kkp'
+    
+    # Delete it if it exists
+    if os.path.exists(to_delete):
+        if verbose: print "deleting", to_delete
+        os.remove(to_delete)
+    else:
+        if verbose: print "no memoized files to delete"
+    
 
 class KK_Server:
     """Object to load spike data from multiple sessions (directories)
@@ -332,6 +347,7 @@ class KK_Server:
         """Returns spike times for specified session * unit
         
         Extra keywords override object defaults (eg group_multiplier, fs)
+        (TODO: actually they don't, for instance load_ and save_ memoized ...)
         
         Current behavior is to always load and save memoized versions for
         best speed. This might change ...
@@ -365,12 +381,15 @@ class KK_Server:
         with file(filename, 'w') as fi:
             cPickle.dump(to_pickle, fi)
     
-    def flush(self):
-        """Delete all memoized data and start over
-        
-        Not yet implemented
-        """
-        pass
+    def flush(self, verbose=False):
+        """Delete all memoized data in my session dict"""
+        # Flush all sessions in the object
+        for session, path in self.session_d.items():
+            if verbose:
+                print "flushing", session
+            
+            # Call the flush method from this module (not this object)
+            flush(path, verbose)
     
     @classmethod
     def from_saved(self, filename):
