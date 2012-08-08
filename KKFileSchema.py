@@ -17,7 +17,8 @@ class KKFileSchema:
         from the files in dirname. The first alphabetical fetfile in
         dirname will be used.
         
-        A normalized, absolutized value for `basename` is stored.
+        A normalized, absolutized value for `basename` is stored, and
+        its parent directory is stored in self.dirname.
         """
         # Decide whether input was a basename or a dirname
         if os.path.isdir(basename_or_dirname):
@@ -37,6 +38,7 @@ class KKFileSchema:
             basename = os.path.abspath(basename_or_dirname)
         
         self.basename = basename
+        self.dirname = os.path.split(self.basename)[0]
         self._force_reload = True
         self._filenamed = {}
         self._filenumberd = {}

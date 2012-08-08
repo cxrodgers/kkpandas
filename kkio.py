@@ -25,9 +25,10 @@ You train it on the locations of data and it deals with calling from_KK.
 
 import numpy as np
 import pandas
-import os.path
+import os
 import glob
 from KKFileSchema import KKFileSchema
+import utility
 
 SPIKE_TIME_COLUMN_NAME = 'time'
 
@@ -287,12 +288,49 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
 
     return data
 
+def flush(kfs_or_path, verbose=False):
+    """Remove any memoized file (basename.kkp) from the directory."""    
+    # Coerce to file schema
+    kfs = KKFileSchema.coerce(kfs_or_path)    
+    
+    # Find the memoized file
+    to_delete = kfs.basename + '.kkp'
+    
+    # Delete it if it exists
+    if os.path.exists(to_delete):
+        if verbose: print "deleting", to_delete
+        os.remove(to_delete)
+    else:
+        if verbose: print "no memoized files to delete"
+    
 
 class KK_Server:
-    """Object to load spike data from multiple sessions (directories)"""
+    """Object to load spike data from multiple sessions (directories)
+    
+    The from_KK class method works great for a single session or a small
+    amount of data. Eventually you want to load from many different sessions
+    easily. 
+    
+    The purpose of this object is to encapsulate the finding and I/O of
+    KK files across sessions. Once it is initialized, you just specify the 
+    session name and the unit that you want and it returns it. 
+    
+    You can also save it to disk and then load it later, without reinitializing
+    all of the file locations.
+    
+    It also takes care of memoization, sampling rates, etc.
+    """
     def __init__(self, session_d=None, session_list=None, parent_dir=None, 
         group_multiplier=100, fs=30e3, **kk_kwargs):
-        """Initialize a new server"""
+        """Initialize a new server from scratch
+        
+        session_d : dict {session_name: full_path_to_KK_dir}
+        session_list : list of session names (keys to session_d)
+        parent_dir : If session_d is None, looks for subdirectories like
+            [os.path.join(parent_dir, session_name) 
+                for session_name in session_list]
+        group_multiplier, fs, **kk_kwargs : used in call to from_KK
+        """
         # Set up dict of sessions
         if session_d is None:
             session_d = {}
@@ -305,25 +343,44 @@ class KK_Server:
         self.kk_kwargs = kk_kwargs
         self.kk_kwargs['group_multiplier'] = group_multiplier
         self.kk_kwargs['fs'] = fs
+        self.kk_kwargs['load_memoized'] = True
+        self.kk_kwargs['save_memoized'] = True
     
-    def load(self, session=None, group=None, unit=None, **kwargs):
+    def get(self, session=None, group=None, unit=None, **kwargs):
+        """Returns spike times for specified session * unit
+        
+        Extra keywords override object defaults (eg group_multiplier, fs,
+        memoization...)
+        
+        Current behavior is to always load and save memoized versions for
+        best speed. This might change ...
+        
+        
+        """        
+        # Where the files are
         dirname = self.session_d[session]
         
+        # Update the usual calling kwargs with any additional ones
         call_kwargs = self.kk_kwargs.copy()
         call_kwargs.update(kwargs)
         
-        spikes = from_KK(dirname, load_memoized=True, save_memoized=True,
-            **self.kk_kwargs)
+        # Do the loading
+        spikes = from_KK(dirname, **call_kwargs)
         
         # Make this panda pick
-        sub = spikes[spikes.unit == unit]
+        #sub = spikes[spikes.unit == unit]
+        sub = utility.panda_pick_data(spikes, group=group, unit=unit)
     
         return sub
+    
+    def load(self, filename):
+        """Renamed to get to avoid confusion with "save" """
+        raise DeprecationWarning("Use 'get' instead")
     
     def save(self, filename):
         """Saves information for later use
         
-        All that is necessary to reconsitute this object is session_d
+        All that is necessary to reconstitute this object is session_d
         and kk_kwargs
         """
         import cPickle
@@ -333,9 +390,15 @@ class KK_Server:
         with file(filename, 'w') as fi:
             cPickle.dump(to_pickle, fi)
     
-    def flush(self):
-        """Delete all pickled data and start over"""
-        pass
+    def flush(self, verbose=False):
+        """Delete all memoized data in my session dict"""
+        # Flush all sessions in the object
+        for session, path in self.session_d.items():
+            if verbose:
+                print "flushing", session
+            
+            # Call the flush method from this module (not this object)
+            flush(path, verbose)
     
     @classmethod
     def from_saved(self, filename):

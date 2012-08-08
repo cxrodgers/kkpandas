@@ -140,18 +140,25 @@ def is_nonstring_iter(val):
     return hasattr(val, '__len__') and not isinstance(val, str)
 
 def panda_pick(df, isnotnull=None, **kwargs):
-    """Underlying picking function
+    """Function to pick row indices from DataFrame.
     
-    Returns indexes into trials_info for which the following is true
-    for all kwargs:
-        * if val is list-like, trials_info[key] is in val
-        * if val is not list-like, trials_info[key] == val
+    This method provides a nicer interface to choose rows from a DataFrame
+    that satisfy specified constraints on the columns.
     
-    list-like is defined by responding to __len__ but NOT being a string
-    (since this is commonly something we test against)
+    isnotnull : column name, or list of column names, that should not be null.
+        See pandas.isnull for a defintion of null
     
-    isnotnull : if not None, then can be a key or list of keys that should
-        be checked for NaN using pandas.isnull
+    All additional kwargs are interpreted as {column_name: acceptable_values}.
+    For each column_name, acceptable_values in kwargs.items():
+        The returned indices into column_name must contain one of the items
+        in acceptable_values.
+    
+    If acceptable_values is None, then that test is skipped.
+        Note that this means there is currently no way to select rows that
+        ARE none in some column.
+    
+    If acceptable_values is a single string or value (instead of a list), 
+    then the returned rows must contain that single string or value.
     
     TODO:
     add flags for string behavior, AND/OR behavior, error if item not found,
@@ -159,7 +166,9 @@ def panda_pick(df, isnotnull=None, **kwargs):
     """
     msk = np.ones(len(df), dtype=np.bool)
     for key, val in kwargs.items():
-        if is_nonstring_iter(val):
+        if val is None:
+            continue
+        elif is_nonstring_iter(val):
             msk &= df[key].isin(val)
         else:
             msk &= (df[key] == val)

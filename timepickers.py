@@ -37,7 +37,21 @@ class TrialPicker:
     
 
 
-
+class IntervalTimePickerNoTrial:
+    """Given event names and events structure, return times to lock on"""
+    @classmethod
+    def pick_d(self, names, events):
+        # Define start and stop times of each event
+        folded, starts, stops = {}, {}, {}
+        for statename in names:
+            starts[statename], stops[statename] = \
+                IntervalTimePickerNoTrial.pick_one(events, statename)
+        
+        return starts, stops
+    
+    @classmethod
+    def pick_one(self, events, statename):
+        return find_events(events, statename + '_in', statename+'_out')
 
 
 class EventTimePicker:

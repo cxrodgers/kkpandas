@@ -381,6 +381,9 @@ class Binned:
         
         This is a concatenation-like operation: the result contains
         each of the values in dbinned in columns titled by keys
+        
+        TODO: make this work when the keys of dbinned are tuples. This should
+        probable generate a multi-index on the columns
         """
         # If no keys specified, use all keys in sorted order
         if keys is None:

@@ -13,11 +13,51 @@ times from each trial. That iteration should be handled here, somehow ...
 
 import numpy as np
 import io
-from timepickers import TrialPicker, EventTimePicker
+from timepickers import TrialPicker, EventTimePicker, IntervalTimePickerNoTrial
 from ns5_process.RS_Sync import RS_Syncer # remove this dependency
 from base import Folded
 
+class IntervalPipeline:
+    def __init__(self, spike_server=None, 
+        time_picker=IntervalTimePickerNoTrial):
+        
+        
+        self.spike_server = spike_server
+        self.time_picker = time_picker
+    
+    def run(self, rs=None, interval_names=None, session=None, unit=None):
+        if self.spikes is None:
+            self.spikes = self.select_spikes(session=session, unit=unit)
+        self.events = self.load_events(rs.full_path)
+        self.starts_d, self.stops_d = self.select_times(self.events,
+            interval_names)
+        self.dfolded = self.fold_spikes_on_times(interval_names,
+            self.starts_d, self.stops_d)
+        
+        return self.dfolded
 
+    def select_spikes(self, session=None, unit=None):
+        return np.asarray(
+            self.spike_server.load(session=session, unit=unit).spike_time)
+
+    def load_events(self, full_path=None):
+        return io.load_events(full_path)
+    
+    def select_times(self, events, interval_names=None, **kwargs):
+        # Extract times
+        starts_d, stops_d = self.time_picker.pick_d(events=events,
+            names=interval_names, **kwargs)
+        return starts_d, stops_d
+    
+    def fold_spikes_on_times(self, interval_names, starts_d, stops_d):
+        # For each interval, fold spikes on starts_d and stops_d
+        dfolded = {}
+        for statename in interval_names:
+            dfolded[statename] = Folded.from_flat(
+                np.asarray(self.spikes.spike_time),
+                starts=starts_d[statename], stops=stops_d[statename])    
+    
+        return dfolded
 
 # something like this should be the analysis pipeline
 def pipeline_overblock_oneevent(kkserver, session, unit, rs,
