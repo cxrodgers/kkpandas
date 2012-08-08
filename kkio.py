@@ -28,6 +28,7 @@ import pandas
 import os
 import glob
 from KKFileSchema import KKFileSchema
+import utility
 
 SPIKE_TIME_COLUMN_NAME = 'time'
 
@@ -342,31 +343,39 @@ class KK_Server:
         self.kk_kwargs = kk_kwargs
         self.kk_kwargs['group_multiplier'] = group_multiplier
         self.kk_kwargs['fs'] = fs
+        self.kk_kwargs['load_memoized'] = True
+        self.kk_kwargs['save_memoized'] = True
     
-    def load(self, session=None, group=None, unit=None, **kwargs):
+    def get(self, session=None, group=None, unit=None, **kwargs):
         """Returns spike times for specified session * unit
         
-        Extra keywords override object defaults (eg group_multiplier, fs)
-        (TODO: actually they don't, for instance load_ and save_ memoized ...)
+        Extra keywords override object defaults (eg group_multiplier, fs,
+        memoization...)
         
         Current behavior is to always load and save memoized versions for
         best speed. This might change ...
+        
+        
         """        
         # Where the files are
         dirname = self.session_d[session]
         
-        # What calling arguments to use
+        # Update the usual calling kwargs with any additional ones
         call_kwargs = self.kk_kwargs.copy()
         call_kwargs.update(kwargs)
         
         # Do the loading
-        spikes = from_KK(dirname, load_memoized=True, save_memoized=True,
-            **self.kk_kwargs)
+        spikes = from_KK(dirname, **call_kwargs)
         
         # Make this panda pick
-        sub = spikes[spikes.unit == unit]
+        #sub = spikes[spikes.unit == unit]
+        sub = utility.panda_pick_data(spikes, group=group, unit=unit)
     
         return sub
+    
+    def load(self, filename):
+        """Renamed to get to avoid confusion with "save" """
+        raise DeprecationWarning("Use 'get' instead")
     
     def save(self, filename):
         """Saves information for later use
