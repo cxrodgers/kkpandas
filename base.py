@@ -4,6 +4,14 @@ This module defines several ways of representing the times of events (or
 spikes), and when they occur time-locked to other events. Methods converting
 between these representation are also provided.
 
+The usual pipeline for spike time analysis is:
+1) Select a set of spikes produced by one or more units
+2) Select a set of events and define a time window of interest around them
+3) Timelock the spikes to those events
+4) Smooth or bin the spikes from each window
+
+The following data structures implement those representations.
+
 Flat - A flat representation is just an array of spike times or 
 a DataFrame (with a column 'time') that has additional descriptive information
 about each event. There is no "Flat" class ... anything that looks like that
