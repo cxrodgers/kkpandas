@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import os
 from base import Folded
 import plotting
+from ns5_process import RecordingSession
 
 def RS_plot_tuning_curve(rs, bins, savefig=True, figsize=(15,15), **folding_kwargs):
     """Folds data for an RS and plots the results as separate tuning curves.
@@ -176,3 +177,37 @@ def plot_tuning_curve(dfolded, tc_freq_labels, tc_atten_labels, bins, figsize=(1
             if ab == 0:
                 ax.set_title('%0.1fK' % (tc_freq_labels[fb] / 1000.))
     return f
+
+
+# Convenience methods for linking kk_servers and recording sessions
+# Probably this should be encapsulated in a kk_superserver object
+def session2rs(session_name, kk_servers, data_dirs):
+    for ratname, kk_server in kk_servers.items():
+        if session_name not in kk_server.session_list:
+            continue
+        
+        # Session found
+        data_dir = data_dirs[ratname]
+        rs = RecordingSession.RecordingSession(
+            os.path.join(data_dir, session_name))
+        
+        return rs
+    
+    # No session ever found
+    raise BaseException("No session like %s found!" % session_name)
+
+def session2kk_server(session_name, kk_servers):
+    for ratname, kk_server in kk_servers.items():
+        if session_name in kk_server.session_list:
+            return kk_server
+        
+    raise BaseException("No session like %s found!" % session_name)
+
+def unit2unum(unit, group_multiplier=100, include_group=True):
+    """Returns unit number including group from unit XML element"""
+    cluster = int(unit.xpath('./cluster/text()')[0])
+    if include_group:
+        group = int(unit.xpath('./group/text()')[0])
+        return (group * group_multiplier + cluster)
+    else:
+        return cluster
