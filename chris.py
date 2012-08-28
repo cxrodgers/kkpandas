@@ -71,3 +71,30 @@ class StimulusTrialPicker(TrialPicker):
         return pick_trial_numbers(*args, **kwargs)
 
 
+
+def plot_all_stimuli_by_block(binned, consistent_ylim=True):
+    """Figure with one subplot for each stimulus and one trace per block"""
+    f, axa = plt.subplots(2, 2, figsize=(10,10))
+
+    ymaxes = []
+
+    # Iterate over stimuli pairs
+    for spy, lb_stim in enumerate(['le', 'ri']):
+        for spx, pb_stim in enumerate(['hi', 'lo']):
+            # Get the axis for this stimulus
+            ax = axa[spx, spy]
+            
+            # Get the column names in binned
+            lname = '%s_%s_lc' % (lb_stim, pb_stim)
+            pname = '%s_%s_pc' % (lb_stim, pb_stim)
+            
+            ax.plot(binned.t, binned.rate[lname], label='LB', color='b')
+            ax.plot(binned.t, binned.rate[pname], label='PB', color='r')
+            ax.set_title('%s (blue) vs %s (red)' % (lname, pname))
+            
+            ymaxes.append(ax.get_ylim()[1])
+
+    for ax in axa.flatten():
+        ax.set_ylim((0, np.max(ymaxes)))
+
+    return f
