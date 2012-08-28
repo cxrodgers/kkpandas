@@ -66,6 +66,28 @@ class IntervalPipeline:
 def pipeline_overblock_oneevent(kkserver, session, unit, rs,
     trial_picker=TrialPicker, trial_picker_kwargs=None,
     evname='play_stimulus_in', folding_kwargs=None):
+    """This aims to be the all-encompassing pipeline
+    
+    See IntervalPipeline for a different design philosophy.
+    
+    Example: Bin by block
+    # Set up the pipeline
+    # How to parse out trials
+    trial_picker_kwargs = {
+        'labels':['LB', 'PB'], 
+        'label_kwargs': [{'block':2}, {'block':4}],
+        'outcome': 'hit', 'nonrandom' : 0
+        }
+    
+    # How to fold the window around each trial
+    folding_kwargs = {'dstart': -.25, 'dstop': 0.}
+    
+    # Run the pipeline
+    res = kkpandas.pipeline.pipeline_overblock_oneevent(
+        kk_server, session, unit2unum(unit), rs, 
+        trial_picker_kwargs=trial_picker_kwargs,
+        folding_kwargs=folding_kwargs)    
+    """
  
     from ns5_process.RS_Sync import RS_Syncer # remove this dependency
     
