@@ -142,7 +142,7 @@ class Folded:
     
     @classmethod
     def from_flat(self, flat, starts=None, centers=None, stops=None, 
-        dstart=None, dstop=None, subtract_off_center=True):
+        dstart=None, dstop=None, subtract_off_center=True, range=None):
         """Construct Folded from Flat.
         
         flat : A flat representation of spike times. It could be a simple
@@ -177,7 +177,7 @@ class Folded:
         # Construct Folded, using trial boundaries as calculate, and
         # subtracting off triggers
         return Folded(values=res, starts=starts, stops=stops, centers=centers,
-            subtract_off_center=subtract_off_center)
+            subtract_off_center=subtract_off_center, range=range)
     
 
 class Binned:
@@ -367,7 +367,8 @@ class Binned:
         return Binned(counts=counts, trials=trials, edges=edges)
     
     @classmethod
-    def from_dict_of_folded(self, dfolded, keys=None, bins=100, binwidth=None):
+    def from_dict_of_folded(self, dfolded, keys=None, bins=100, binwidth=None,
+        **kwargs):
         """Initialize a Binned from a dict of Folded over various categories
         
         Simple wrapper function that creates a Binned from each Folded,
@@ -384,6 +385,11 @@ class Binned:
             is queried and the smallest interval covering all ranges is used.
         binwidth: width of bin in seconds
             If you specify bins as a number and binwidth, binwidth dominates.
+        kwargs : sent to from_folded for each category
+        
+        TODO: harmonize the generation of `bins` with from_folded
+        Right now this one is different, more feature-ful, but also fails
+        if the range attribute is not set on the values in dfolded.
         """
         if keys is None:
             keys = dfolded.keys()
@@ -402,7 +408,7 @@ class Binned:
         
         binned_d = {}
         for key in keys:
-            binned_d[key] = Binned.from_folded(dfolded[key], bins=bins)
+            binned_d[key] = Binned.from_folded(dfolded[key], bins=bins, **kwargs)
 
         return Binned.from_dict_of_binned(binned_d, keys=keys)
     
@@ -443,3 +449,32 @@ class Binned:
         # Construct (note override of column names)
         return Binned(counts=all_counts, trials=all_trials, edges=edges,
             columns=keys)
+    
+    @classmethod
+    def from_folded_by_trial(self, folded, bins=None, starts=None, stops=None,
+        range=None):
+        """Bin each trial separately.
+        
+        Right now this is a little hacky. It just creates a dict from 
+        each trial index to each trial in folded, then calls
+        from_dict_of_folded
+        """
+        # Copy data into individual foldeds
+        # This should probably be a method in Folded
+        if starts is None:
+            starts = folded.starts
+        if stops is None:
+            stops = folded.stops
+        if range is None:
+            range = folded.range
+        
+        dfolded = {}
+        for n in np.arange(len(folded), dtype=np.int):
+            # Create a folded from a single trial
+            # Would be nice if this were a method in folded
+            ff = Folded(values=[folded[n]],
+                starts=[starts[n]], stops=[stops[n]], range=range,
+                subtract_off_center=False) 
+            dfolded[n] = ff
+
+        return Binned.from_dict_of_folded(dfolded, bins=bins)
