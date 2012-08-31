@@ -39,18 +39,42 @@ class Folded:
 
     Provides iteration over these spikes from each trial, as well as
     remembering the time base of each trial.
+    
+    TODO: allow the storing of trial labels so that trials can be indexed
+    by label instead of index.
+    
+    TODO: be more flexible about time-locking being optional. Perhaps a flag
+    so that it knows whether they are time-locked. Perhaps a way to easily
+    convert between time-locked and original spike times.
     """
     def __init__(self, values, starts, stops, centers=None, 
         subtract_off_center=False, range=None, dataframe_like=None):
-        """Initialize a new Folded
+        """Initialize a new Folded.
         
-        values : list of times on each trial, also accessible with getitem
-        (though perhaps it should be some kind of trial-label?)
-        Each entry is aligned to the corresponding entry in `centers`
+        Generally you do not call this directly, but use one of the class
+        method constructors (like `from_flat`).
+        
+        values : list or DataFrame of length n_trials.
+            Each entry contains the spike times on that trial.
+            Each entry is aligned to the corresponding entry in `centers`
+        
+        dataframe_like : Flag controlling whether the values are DataFrame
+            or array. 
+            If True, it should contain a column 'time', as well
+            as potentially other columns (eg, 'unit', 'tetrode').
+            If False, the values will be coerced to 1-dimensional arrays.
+        
+        subtract_off_center: If True, then subtract each entry in 'centers'
+            from each entry in 'values', to time-lock to an event in the trial.
+            If False, do not do this (for example if you have already
+            time-locked your spikes, or time-locking is not meaningful.)
     
         These arrays are all of the same length:
         starts : array of start times by trial
+            Currently this is a required argument.
+            TODO: make optional, in case values are already time-locked.
         stops : array of stop times by trial
+            TODO: see above.
         centers : array of trigger times by trial
             If not specified, uses starts
         
@@ -58,11 +82,8 @@ class Folded:
         PSTH can be calculated.    
             If not specified, uses largest starting and stopping times
             over all trials.
-        
-        TODO: have this remember whether its spike times are aligned to
-        center or not. Perhaps a different object for each behavior?
-        Or a flag to remember whether it's already been done? Or hold both
-        types of timestamps?
+            Oops ... using `range` as a variable name is a terrible idea.
+            But this is what np.histogram uses ...
         """
         self.values = values
         self.starts = np.asarray(starts)
@@ -77,6 +98,16 @@ class Folded:
                 except (KeyError, ValueError):
                     dataframe_like = False
         self.dataframe_like = dataframe_like
+        
+        # Coerce values to 1-dim array
+        # Otherwise we get weird errors from 0d entries
+        # Add a test case for this
+        if not self.dataframe_like:
+            # Tortured syntax
+            # Avoids conflict with keyword range
+            # and also ensures that values[n] is a reference, not a copy
+            for n in np.arange(len(values), dtype=np.int):
+                values[n] = np.asarray(values[n]).flatten()
         
         # Store or calculate centers
         if centers is None:
