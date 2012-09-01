@@ -306,7 +306,8 @@ class Binned:
     
     # Construction methods    
     @classmethod
-    def from_folded(self, folded, bins=None, starts=None, stops=None):
+    def from_folded(self, folded, bins=None, starts=None, stops=None,
+        meth=np.histogram):
         """Construct Binned object by histogramming list-like Folded.
         
         It is assumed that folded contains replicates to be averaged together.
@@ -358,7 +359,7 @@ class Binned:
                 times = np.array([])
 
         # Here is the actual histogramming
-        counts, edges = np.histogram(times, bins=bins, range=range)
+        counts, edges = meth(times, bins=bins, range=range)
         
         # Now we calculate how many trials are included in each bin
         trials = np.array([np.sum((stops - starts) > e) for e in edges[:-1]])
@@ -452,7 +453,7 @@ class Binned:
     
     @classmethod
     def from_folded_by_trial(self, folded, bins=None, starts=None, stops=None,
-        range=None):
+        range=None, **kwargs):
         """Bin each trial separately.
         
         Right now this is a little hacky. It just creates a dict from 
@@ -477,4 +478,29 @@ class Binned:
                 subtract_off_center=False) 
             dfolded[n] = ff
 
-        return Binned.from_dict_of_folded(dfolded, bins=bins)
+        return Binned.from_dict_of_folded(dfolded, bins=bins, **kwargs)
+
+
+
+def define_bin_edges(bins=None, binwidth=None, range=None):
+    """Determine bin edges given width or number, and a range to span.
+    
+    bins : number, or array-like
+    binwidth : specified width of each bin
+    range : start, stop
+    
+    Returns: edges
+    """
+    if np.iterable(bins):
+        edges = bins
+    else:
+        if range is None:
+            raise Exception("you must specify the range")
+        
+        # Set via width or number
+        if binwidth is None:
+            edges = np.linspace(range[0], range[1], bins + 1)
+        else:
+            edges = np.arange(range[0], range[1], binwidth)    
+    
+    return edges
