@@ -504,3 +504,96 @@ def define_bin_edges(bins=None, binwidth=None, range=None):
             edges = np.arange(range[0], range[1], binwidth)    
     
     return edges
+
+
+from DiscreteAnalyze.PointProc import smooth_event_train
+class GaussianSmoother:
+    """Object providing methods to smooth spiketrains instead of binning.
+    
+    Primarily intended to provide the `meth` argument to Binned.from_folded
+    
+    Rather than filter using filtfilt, this adds Gaussians at each timestamp,
+    which is probably more efficient for most spiketrains.
+    """
+    def __init__(self, smoothing_window=.005):
+        self.smoothing_window = smoothing_window
+
+    def smooth(self, a, bins=None, range=None):
+        """Add Gaussians at each time in `times`.
+        
+        Intended as drop-in replacement for np.histogram.
+        The continously valued smooth signal is sampled at each of the
+        bin centers.
+        
+        The variable bins determines the precision of the returned signals.
+        The variable smoothing_window determines the smeared-outness of
+        the gaussians.
+        
+        Because the spike times are discretized first, all the Gaussians
+        will have the same peak (that is, no penalty for being slightly off
+        a bin center). This is not as accurate but for bin-spacing much
+        finer than the smoothing_window, it is okay.
+        
+        bins - instead of bin edges, this is more like sampling points
+            of the continuous valued smoothed signal. This should be
+            faster than self.smoothing_window because the spikes are discretized
+            and spread out with stdev smoothing_window.
+        range - used to define bin edges if bins is an integer
+        
+        Example:
+            bins = [-.002, 0., .002, .004]
+            spike_times = [-.0005, .0005]
+            bincenters = [-.001, .001, .003]
+            f_samp = 1/.002 = 500
+            t_start, t_stop = -.001, .003
+            
+            We discretize by multiplying by f_samp and rounding:
+            n_start, n_stop = 0, 2
+            timestamps = [0, 0]
+            
+            The returned values are n_op = [0, 1, 2] and x_op evaluated at
+            those points. In ths case that will be a half Gaussian with peak
+            at 0.
+        
+        Gain:
+            Currently, the underlying smoothing function adds a Gaussian
+            that has been normalized in the discretized basis. That is,
+            the returned signal will always sum to len(a) by construction,
+            unless some spikes have been chopped off due to truncation.
+            You could argue that this should be in Hz, or that the normalization
+            of each Gaussian should not account for the amount lost to
+            the approximation inherent in discretization.
+        
+        Returns:
+            counts, edges
+            counts - value at each center in between edges
+            edges - the bin edges
+        """
+        # Define bins and sampling frequency
+        bins = np.asarray(define_bin_edges(bins=bins, range=range))
+        bincenters = bins[:-1] + 0.5 * np.diff(bins)
+        binwidth = np.mean(np.diff(bincenters))
+        fs = 1 / binwidth
+
+        # Discretize by numbering the bins from 0 to len(bincenters) - 1,
+        # and subtracting the first bincenter from all spike times, then
+        # multiplying by sampling rate.
+        n_start = 0
+        n_stop = len(bincenters) - 1
+        timestamps = np.rint(fs*(np.asarray(a) - bincenters[0])).astype(np.int)
+        
+        # Define filter parameters in samples
+        filter_std = self.smoothing_window * fs # ok if not integer
+        filter_truncation_width = np.rint(3 * filter_std).astype(np.int)
+        
+        # Call the underlying smoothing function
+        n_op, x_op = smooth_event_train(
+            timestamps=timestamps, filter_std=filter_std,
+            filter_truncation_width=filter_truncation_width, 
+            n_min=n_start, n_max=n_stop)
+        
+        # Cast into desired units
+        counts = x_op
+        edges = bins
+
+        return counts, edges
