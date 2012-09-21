@@ -5,7 +5,7 @@ import os.path
 import glob
 
 class KKFileSchema:
-    def __init__(self, basename_or_dirname):
+    def __init__(self, basename_or_dirname, ignore_tilde=True):
         """Initialize a new KK schema from directory or basename.
         
         If basename is not None, then there should exist files like
@@ -19,6 +19,9 @@ class KKFileSchema:
         
         A normalized, absolutized value for `basename` is stored, and
         its parent directory is stored in self.dirname.
+        
+        If ignore_tilde, then any files ending in the '~' character are
+        ignored, on the presumption that they are backups.
         """
         # Decide whether input was a basename or a dirname
         if os.path.isdir(basename_or_dirname):
@@ -42,17 +45,30 @@ class KKFileSchema:
         self._force_reload = True
         self._filenamed = {}
         self._filenumberd = {}
+        self.ignore_tilde = ignore_tilde
         self.populate()
         
     def populate(self):
         # find the files
         for ext in ['fet', 'clu', 'res', 'spk']:
-            self._filenamed[ext] = sorted(glob.glob(self.basename + 
-                '.%s.*' % ext))
+            # Find everything with that sort of extension
+            filename_l = sorted(glob.glob(self.basename + '.%s.*' % ext))
             
+            # Optionally drop things ending in tilde
+            if self.ignore_tilde:
+                filename_l = filter(lambda s: not s.endswith('~'), filename_l)
+            
+            # Store in _filenamed, dict from extension to file name list
+            self._filenamed[ext] = filename_l
+            
+            # Remove period
             filenumberstrings = [os.path.splitext(fn)[1] for fn in
                 self._filenamed[ext]]
             
+            # Try to coerce what remains to an integer
+            # This often fails for slight problems
+            # Should probably have it just drop everything it fails on
+            # and issue a warning, rather than error-ing here
             try:
                 self._filenumberd[ext] = map(lambda s: int(s[1:]),
                     filenumberstrings)
