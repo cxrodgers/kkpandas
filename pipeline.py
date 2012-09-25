@@ -65,7 +65,7 @@ class IntervalPipeline:
 # something like this should be the analysis pipeline
 def pipeline_overblock_oneevent(kkserver, session, unit, rs,
     trial_picker=TrialPicker, trial_picker_kwargs=None,
-    evname='play_stimulus_in', folding_kwargs=None):
+    evname='play_stimulus_in', folding_kwargs=None, sort_spikes=True):
     """This aims to be the all-encompassing pipeline
     
     See IntervalPipeline for a different design philosophy.
@@ -87,6 +87,11 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
         kk_server, session, unit2unum(unit), rs, 
         trial_picker_kwargs=trial_picker_kwargs,
         folding_kwargs=folding_kwargs)    
+    
+    sort_spikes : whether to sort the spike times after loading.
+        Certainly the spikes should be sorted before processing
+        This defaults to False because it's often the case that they're
+        pre-sorted
     """
  
     from ns5_process.RS_Sync import RS_Syncer # remove this dependency
@@ -98,6 +103,9 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
     # Spike selection
     spikes = np.asarray(
         kkserver.get(session=session, unit=unit).time)
+    
+    if sort_spikes:
+        spikes = np.sort(spikes)
 
     
     # Select trials from behavior
