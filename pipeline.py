@@ -65,10 +65,34 @@ class IntervalPipeline:
 # something like this should be the analysis pipeline
 def pipeline_overblock_oneevent(kkserver, session, unit, rs,
     trial_picker=TrialPicker, trial_picker_kwargs=None,
-    evname='play_stimulus_in', folding_kwargs=None, sort_spikes=True):
+    evname='play_stimulus_in', folding_kwargs=None, sort_spikes=True,
+    final_folded_map=None, final_folded_map_dtype=np.int):
     """This aims to be the all-encompassing pipeline
     
     See IntervalPipeline for a different design philosophy.
+
+    Each 'category' of trials is folded together.
+    
+    trial_picker_kwargs : dict
+        Definition of each category. It has the following items:
+        'labels' : list
+            Name of each category (keys in returned dict)
+        'label_kwargs' : list, of same length as 'labels'
+            Definition of each category. Passed as keyword arguments to
+            `trial_picker`. For the default picker: each key, value pair is applied
+            to trials_info to select trials for this category. For example,
+            {'outcome': 'hit', 'block': 2}
+            
+            This can also be a MultiIndex with suitably defined attribute
+            `names`. That way actually makes more sense to me in the long 
+            run. For now it is converted to the above dict-like syntax.
+        Any other key, value pairs in this dict are passed to `trial_picker`
+        for EVERY category. Ex: {'nonrandom': 0}
+
+    trial_picker : object
+        Object that picks the trials for each category, according to
+        `trial_picker_kwargs` and using TRIALS_INFO
+    
     
     Example: Bin by block
     # Set up the pipeline
@@ -104,9 +128,17 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
     spikes = np.asarray(
         kkserver.get(session=session, unit=unit).time)
     
+    # Have to sort them if they aren't already
     if sort_spikes:
         spikes = np.sort(spikes)
-
+    
+    # Convert trial_picker_kwargs from MultiIndex if necessary
+    if hasattr(trial_picker_kwargs['label_kwargs'], 'names'):
+        trial_picker_kwargs = trial_picker_kwargs.copy()
+        mi = trial_picker_kwargs['label_kwargs']
+        trial_picker_kwargs['label_kwargs'] = [
+            dict([(name, val) for name, val in zip(mi.names, val2)]) 
+            for val2 in list(mi)]
     
     # Select trials from behavior
     if trial_picker_kwargs is None:
@@ -153,5 +185,10 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
         # Now fold spike times on timelock times    
         res[label] = Folded.from_flat(
             flat=spikes, centers=timelocks, **folding_kwargs)
+        
+        # Optionally apply a map to each folded
+        if final_folded_map is not None:
+            res[label] = np.asarray(map(final_folded_map, res[label]),
+                dtype=final_folded_map_dtype)
 
     return res
