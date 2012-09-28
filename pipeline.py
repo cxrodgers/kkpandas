@@ -66,7 +66,8 @@ class IntervalPipeline:
 def pipeline_overblock_oneevent(kkserver, session, unit, rs,
     trial_picker=TrialPicker, trial_picker_kwargs=None,
     evname='play_stimulus_in', folding_kwargs=None, sort_spikes=True,
-    final_folded_map=None, final_folded_map_dtype=np.int):
+    final_folded_map=None, final_folded_map_dtype=np.int,
+    label_with_btrial_numbers=True):
     """This aims to be the all-encompassing pipeline
     
     See IntervalPipeline for a different design philosophy.
@@ -93,6 +94,10 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
         Object that picks the trials for each category, according to
         `trial_picker_kwargs` and using TRIALS_INFO
     
+    label_with_btrial_numbers : bool
+        If True, then an attribute called 'labels' is stored in each returned
+        Folded. 'labels' is the behavioral trial number of each entry in
+        the Folded.
     
     Example: Bin by block
     # Set up the pipeline
@@ -167,14 +172,18 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
             np.in1d(picked_trials_l[n][1], rss.btrial_numbers)])
 
     # Iterate over picked_trials_l and extract time from each trial
-    label2timelocks = {}
+    label2timelocks, label2btrial_numbers = {}, {}    
     for label, trial_numbers in picked_trials_l:
         # Extract trials by number (put this as accessor method in Folded
         trials = [tn2ev[tn] for tn in trial_numbers] # go in folded
     
+        # Store the trial numbers that we picked (for labeling the Folded later)
+        label2btrial_numbers[label] = np.asarray(trial_numbers)
+    
         # Get timelock times by applying a function to each entry (put this in Folded)
         times = EventTimePicker.pick(evname, trials)
         
+        # Store the timelock times
         label2timelocks[label] = times
     
     # Now fold out over timelocked times
@@ -185,6 +194,14 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
         # Now fold spike times on timelock times    
         res[label] = Folded.from_flat(
             flat=spikes, centers=timelocks, **folding_kwargs)
+        
+        # Optionally label each trial
+        # This is sort of a hack ... eventually would like to be able
+        # to access the trials by trial number instead of index
+        if label_with_btrial_numbers:
+            if hasattr(f, 'labels'):
+                print "warning: overwriting something in Folded"
+            res[label].labels = label2btrial_numbers[label]
         
         # Optionally apply a map to each folded
         if final_folded_map is not None:
