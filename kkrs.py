@@ -236,12 +236,12 @@ def unit2analyzable(unit, return_as_string=False):
     else:
         return l[0] == 'True'
     
-def unum2auditory(unum, error_check=True):
-    """By convention, anything in 100-499 (or 1000-4999)"""
+def unum2group(unum, error_check=True):
+    """By convention, first digit in unit number"""
     if error_check:
         if int(unum) < 100 or int(unum) >= 8999:
             raise ValueError("impossible unit number, no group_multiplier")
     
-    return int(str(unum)[0]) <= 4
+    return int(str(unum)[0])
     
     
