@@ -1,4 +1,7 @@
-"""Module for operating on RecordingSession objects using kkpandas tools"""
+"""Module for operating on RecordingSession objects using kkpandas tools
+
+This is all pretty specific to my analyses and conventions.
+"""
 import kkpandas
 import kkio
 import numpy as np
@@ -181,6 +184,7 @@ def plot_tuning_curve(dfolded, tc_freq_labels, tc_atten_labels, bins, figsize=(1
 
 # Convenience methods for linking kk_servers and recording sessions
 # Probably this should be encapsulated in a kk_superserver object
+# Would be nice to combine this with the info from getstarted
 def session2rs(session_name, kk_servers, data_dirs):
     for ratname, kk_server in kk_servers.items():
         if session_name not in kk_server.session_list:
@@ -203,6 +207,8 @@ def session2kk_server(session_name, kk_servers):
         
     raise BaseException("No session like %s found!" % session_name)
 
+
+# These are methods specifically for my XML convention
 def unit2unum(unit, group_multiplier=100, include_group=True):
     """Returns unit number including group from unit XML element"""
     cluster = int(unit.xpath('./cluster/text()')[0])
@@ -211,3 +217,31 @@ def unit2unum(unit, group_multiplier=100, include_group=True):
         return (group * group_multiplier + cluster)
     else:
         return cluster
+
+def unit2session_name(unit):
+    """Ascends the xml tree to session_name"""
+    l = unit.xpath('../../../@session_name')
+    if len(l) != 1:
+        raise ValueError("can't find session name from unit")
+    return l[0]
+
+def unit2analyzable(unit, return_as_string=False):
+    """Returns the 'analyze' attribute, as Boolean or string."""
+    l = unit.xpath('../../../@analyze')
+    if len(l) != 1:
+        raise ValueError("can't find 'analyze' from unit")
+
+    if return_as_string:
+        return l[0]
+    else:
+        return l[0] == 'True'
+    
+def unum2auditory(unum, error_check=True):
+    """By convention, anything in 100-499 (or 1000-4999)"""
+    if error_check:
+        if int(unum) < 100 or int(unum) >= 8999:
+            raise ValueError("impossible unit number, no group_multiplier")
+    
+    return int(str(unum)[0]) <= 4
+    
+    
