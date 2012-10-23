@@ -21,6 +21,22 @@ from timepickers import TrialPicker, EventTimePicker, IntervalTimePickerNoTrial
 from base import Folded
 
 class IntervalPipeline:
+    """Object to fold spikes on specified intervals, without regard for trials.
+    
+    Generally you provide the spike server and the time picker, and it does
+    the rest, via a call to `run`. You can overrule this, for instance if
+    you want to directly provide the interval times rather than have it
+    acquire them with a timepicker.
+
+    Methods
+    -------
+    run : Go through the whole pipeline, calling the following methods in
+        order.
+    select_spikes : grabs spikes from specified session, unit
+    load_events : gets event times
+    select_times : uses time_picker to pick times from events
+    fold_spikes_on_times : folds the selected spikes on the selected events
+    """
     def __init__(self, spike_server=None, 
         time_picker=IntervalTimePickerNoTrial):
         
@@ -41,7 +57,7 @@ class IntervalPipeline:
 
     def select_spikes(self, session=None, unit=None):
         return np.asarray(
-            self.spike_server.load(session=session, unit=unit).spike_time)
+            self.spike_server.get(session=session, unit=unit).time)
 
     def load_events(self, full_path=None):
         return io.load_events(full_path)
@@ -57,7 +73,7 @@ class IntervalPipeline:
         dfolded = {}
         for statename in interval_names:
             dfolded[statename] = Folded.from_flat(
-                np.asarray(self.spikes.spike_time),
+                np.asarray(self.spikes),
                 starts=starts_d[statename], stops=stops_d[statename])    
     
         return dfolded
