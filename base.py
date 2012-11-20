@@ -459,6 +459,15 @@ class Binned:
         Right now this is a little hacky. It just creates a dict from 
         each trial index to each trial in folded, then calls
         from_dict_of_folded
+        
+        starts, stops, range : used for folding each trial, otherwise
+            taken from folded
+        bins, **kwargs : sent to Binned constructor
+        
+        A common kwarg is `meth`, which is np.histogram by default, but
+        could be a smoother.
+            gs = kkpandas.base.GaussianSmoother(smoothing_window=.005)
+            meth = gs.smooth
         """
         # Copy data into individual foldeds
         # This should probably be a method in Folded
