@@ -49,6 +49,14 @@ class KKFileSchema:
         self.populate()
         
     def populate(self):
+        """Find KK files in the directory and store
+        
+        Searches for files matching the following string:
+            basename + '.' + extension + '.' + integer
+        
+        Stores all files that match this pattern in dicts keyed by extension.
+        Checks that the group numbering of each extension matches up.
+        """
         # find the files
         for ext in ['fet', 'clu', 'res', 'spk']:
             # Find everything with that sort of extension
@@ -57,37 +65,43 @@ class KKFileSchema:
             # Optionally drop things ending in tilde
             if self.ignore_tilde:
                 filename_l = filter(lambda s: not s.endswith('~'), filename_l)
+
+            # Filter out anything that does not look like:
+            #   basename + '.' + extension + '.' + int
+            # with a warning
+            filtered_filename_l, filenumber_l = [], []
+            for fn in filename_l:
+                pattern = '^%s\.%s\.(\d+)$' % (self.basename, ext)
+                m = glob.re.match(pattern, fn)
+                
+                if m is None:
+                    # Does not match, issue warning
+                    print "warning: cannot parse %s, ignoring" % fn
+                else:
+                    # Add to filtered filename and filenumber lists
+                    filenumber = int(m.groups()[0])
+                    filtered_filename_l.append(fn)
+                    filenumber_l.append(filenumber)
             
             # Store in _filenamed, dict from extension to file name list
-            self._filenamed[ext] = filename_l
+            self._filenamed[ext] = filtered_filename_l
             
-            # Remove period
-            filenumberstrings = [os.path.splitext(fn)[1] for fn in
-                self._filenamed[ext]]
-            
-            # Try to coerce what remains to an integer
-            # This often fails for slight problems
-            # Should probably have it just drop everything it fails on
-            # and issue a warning, rather than error-ing here
-            try:
-                self._filenumberd[ext] = map(lambda s: int(s[1:]),
-                    filenumberstrings)
-            except ValueError, TypeError:
-                raise ValueError("cannot coerce group string to integer")
+            # And _filenumberd, dict from extension to file numbers
+            self._filenumberd[ext] = filenumber_l
         
-        # check existence
+        # check that files were actually found
         nonzero_exts = [
             key for key, val in self._filenamed.items() if len(val) > 0]
         if len(nonzero_exts) == 0:
             print "warning: no KK files found like %s" % self.basename
             self.groups = []
         else:
-            # check alignment
+            # check that the group numbering of each extension matches up
             self.groups = self._filenumberd[nonzero_exts[0]]
             for ext in nonzero_exts:
                 if self._filenumberd[ext] != self.groups:
                     print ("warning: KK extensions %s and %s out-of-sync" %
-                        ext, nonzero_exts[0])
+                        (ext, nonzero_exts[0]))
         
         self._force_reload = False
     
