@@ -95,7 +95,7 @@ class Folded:
                 try:
                     values[0]['time']
                     dataframe_like = True
-                except (KeyError, ValueError):
+                except (KeyError, ValueError, TypeError):
                     dataframe_like = False
         self.dataframe_like = dataframe_like
         
@@ -118,8 +118,8 @@ class Folded:
         # Store or calculate range
         if range is None:
             try:
-                t_start = np.min(starts - centers)
-                t_stop = np.max(stops - centers)
+                t_start = np.min(self.starts - self.centers)
+                t_stop = np.max(self.stops - self.centers)
                 self.range = (t_start, t_stop)
             except ValueError:
                 self.range = None
@@ -156,7 +156,7 @@ class Folded:
         dataframe_like = True
         try:
             spike_times = flat['time']
-        except (KeyError, ValueError):
+        except (KeyError, ValueError, TypeError):
             spike_times = flat
             dataframe_like = False
     
