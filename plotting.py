@@ -56,7 +56,7 @@ def plot_psth_with_rasters(folded, smoothed=None, bins=None, ax=None):
     
 
 def plot_rasters(folded_spike_times, ax=None, full_range=1.0, 
-    y_offset=0.0, plot_kwargs=None):
+    y_offset=0.0, plot_kwargs=None, sort_by_duration=False):
     """Plots raster of spike times or psth object.
     
     folded_spike_times : Folded, or any list of arrays of time-locked spike times
@@ -70,6 +70,14 @@ def plot_rasters(folded_spike_times, ax=None, full_range=1.0,
     
     Returns the axis in which it was plotted
     """
+    if sort_by_duration:
+        starts, stops = folded_spike_times.starts, folded_spike_times.stops
+        durations = stops - starts
+        idxs = np.argsort(durations)
+        
+        folded_spike_times = np.asarray(folded_spike_times.values)[idxs]
+        starts, stops = starts[idxs], stops[idxs]
+    
     # build axis
     if ax is None:
         f = plt.figure(); ax = f.add_subplot(111)
@@ -90,5 +98,11 @@ def plot_rasters(folded_spike_times, ax=None, full_range=1.0,
             y_offset + np.ones(trial_spikes.shape, dtype=np.float) * 
             n / float(len(folded_spike_times)) * full_range,
             **plot_kwargs)
+        
+        if sort_by_duration:
+            ax.plot([starts[n]-starts[n]], 
+                y_offset + n / float(len(folded_spike_times)) * full_range, 'ro')
+            ax.plot([stops[n]-starts[n]], 
+                y_offset + n / float(len(folded_spike_times)) * full_range, 'bo')                
     
     return ax
