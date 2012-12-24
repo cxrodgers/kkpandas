@@ -223,12 +223,21 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
     Returns:
         DataFrame with columns 'unit', 'time', and optionally 'group'
     """
+    memoized_filename = None # to be determined later, if necessary
+    
     # load files like basename
-    kfs = KKFileSchema.coerce(basename)
+    try:
+        kfs = KKFileSchema.coerce(basename)
+    except ValueError:
+        # This occurs when no spike files are found, but there might still
+        # be kkp files.
+        load_memoized = True
+        memoized_filename = glob.glob(os.path.join(basename, '*.kkp'))[0]
     
     # try to load memoized
-    memoized_filename = kfs.basename + '.kkp'
     if load_memoized:
+        if memoized_filename is None:
+            memoized_filename = kfs.basename + '.kkp'        
         try:
             data = pandas.load(memoized_filename)
             return_early = True
@@ -272,11 +281,14 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
         clusters_by_group = [
             set(np.unique(np.asarray(groupdata.unit)))
             for groupdata in group_d.values()]
-        n_unique_clusters = len(set.union(*clusters_by_group))
-        n_total_clusters = sum([len(g) for g in clusters_by_group])
-        if n_unique_clusters != n_total_clusters:
-            raise ValueError("got %d overlapping clusters" % 
-                (n_total_clusters - n_unique_clusters))
+        if len(clusters_by_group) > 0:
+            # find number of unique clusters
+            # will error here if no clusters found
+            n_unique_clusters = len(set.union(*clusters_by_group))
+            n_total_clusters = sum([len(g) for g in clusters_by_group])
+            if n_unique_clusters != n_total_clusters:
+                raise ValueError("got %d overlapping clusters" % 
+                    (n_total_clusters - n_unique_clusters))
     
     # turn list into one giant dataframe for everybody
     sorted_keys = sorted(group_d.keys())
