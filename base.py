@@ -140,6 +140,47 @@ class Folded:
     def __len__(self):
         return len(self.values)
     
+    def __add__(self, other):
+        """Add two Folded by concatenating their values"""
+        # Concatenate all by converting to list first
+        # Most will be converted to array in constructor, except for values
+        try:
+            starts = list(self.starts) + list(other.starts)
+        except:
+            starts = None
+        try:
+            values = list(self.values) + list(other.values)
+        except:
+            values = None
+        try:
+            stops = list(self.stops) + list(other.stops)
+        except:
+            stops = None
+        try:
+            centers = list(self.centers) + list(other.centers)
+        except:
+            centers = None  
+
+        # Check that ranges are consistent, if possible
+        try:
+            if not np.allclose(self.range, other.range):
+                print "warning: range not the same in summed Folded"
+        except:
+            pass
+        
+        # Take the mean of the ranges, if possible
+        try:
+            range = np.mean([self.range, other.range], axis=0)
+        except:
+            range = None
+        
+        # Construct the return value
+        ret = Folded(starts=starts, centers=centers, stops=stops, values=values,
+            range=range)
+        
+        return ret
+        
+    
     @classmethod
     def from_flat(self, flat, starts=None, centers=None, stops=None, 
         dstart=None, dstop=None, subtract_off_center=True, range=None):
@@ -324,9 +365,17 @@ class Binned:
             a number of bins (in which case `range` is used to ensure
             consistent bin sizes regardless of when spikes occurred). This
             assumes the `range` attribute of `folded` is specified correctly...
+        meth : a method, default np.histogram, that takes a concatenated list
+            of spike times and produces a "rate over time". It will also
+            receive the `range` attribute of `folded`, if available.
+            Another option:
+            gs = kkpandas.base.GaussianSmoother(smoothing_window=.005)
+            meth = gs.smooth
         
         The following attributes are collected from `folded` if available,
-        or otherwise you can specify them as arguments.
+        or otherwise you can specify them as arguments. They are necessary
+        because this method needs to know when spike collection began and
+        ended for each trial.
         starts : list-like, same length as `folded`, the time at which 
             spike collection began for each trial
         stops : when the spike collection ended for each trial
