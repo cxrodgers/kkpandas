@@ -140,6 +140,15 @@ class Folded:
     def __len__(self):
         return len(self.values)
     
+    def __repr__(self):
+        l = len(self)
+        ret = "Folded containing %d spiketrains\n" % l
+        if l > 0:
+            ret += "%r\n" % self.values[0]
+        if l > 1:
+            ret += "...\n%r" % self.values[-1]
+        return ret
+    
     def __add__(self, other):
         """Add two Folded by concatenating their values"""
         # Concatenate all by converting to list first
