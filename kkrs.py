@@ -11,6 +11,26 @@ from base import Folded
 import plotting
 from ns5_process import RecordingSession
 
+def is_auditory(ulabel, ratname=None):
+    """Determines whether that unit from that rat was in auditory group"""
+    # Get the group
+    unum = int(ulabel.split('-')[1])
+    group = unum2group(unum)
+    
+    # Get the ratname
+    if ratname is None:
+        ratname = ulabel2ratname(ulabel)
+    
+    # Determine whether auditory
+    if ratname in ['CR12B', 'CR17B']:
+        return True
+    elif ratname in ['YT6A', 'CR20B', 'CR21A']:
+        return group >= 5
+
+def ulabel2ratname(ulabel):
+    return ulabel.split('_')[0]
+
+
 def RS_plot_tuning_curve(rs, bins, savefig=True, figsize=(15,15), **folding_kwargs):
     """Folds data for an RS and plots the results as separate tuning curves.
     
