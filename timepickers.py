@@ -79,6 +79,12 @@ class EventTimePicker:
     """Given event name and folded events_info, returns times to lock on"""
     @classmethod
     def pick(self, event_name, trials_l):
+        """Return df[df.event==event_name] for df in trials_l
+        
+        If there is no such event, a warning is printed and the trial
+        is skipped. If there is more than one event, a warning is taken
+        and the first such event is taken.
+        """
         res = []
         w, w2 = False, False
         for trial in trials_l:
