@@ -40,14 +40,11 @@ class Folded:
     Provides iteration over these spikes from each trial, as well as
     remembering the time base of each trial.
     
-    TODO: allow the storing of trial labels so that trials can be indexed
-    by label instead of index.
-    
     TODO: be more flexible about time-locking being optional. Perhaps a flag
     so that it knows whether they are time-locked. Perhaps a way to easily
     convert between time-locked and original spike times.
     """
-    def __init__(self, values, starts, stops, centers=None, 
+    def __init__(self, values, starts, stops, centers=None, labels=None,
         subtract_off_center=False, range=None, dataframe_like=None):
         """Initialize a new Folded.
         
@@ -77,6 +74,8 @@ class Folded:
             TODO: see above.
         centers : array of trigger times by trial
             If not specified, uses starts
+        labels : array of labels by trial
+            Generally (always?) an integer representing the trial number
         
         range : A tuple (t_start, t_stop) for suggesting a range over which
         PSTH can be calculated.    
@@ -114,6 +113,12 @@ class Folded:
             self.centers = starts
         else:
             self.centers = np.asarray(centers)
+        
+        # Store labels if provided
+        if labels is None:
+            self.labels = None
+        else:
+            self.labels = np.asarray(labels)
         
         # Store or calculate range
         if range is None:
@@ -169,6 +174,10 @@ class Folded:
             centers = list(self.centers) + list(other.centers)
         except:
             centers = None  
+        try:
+            labels = list(self.labels) + list(other.labels)
+        except:
+            labels = None
 
         # Check that ranges are consistent, if possible
         try:
@@ -185,14 +194,15 @@ class Folded:
         
         # Construct the return value
         ret = Folded(starts=starts, centers=centers, stops=stops, values=values,
-            range=range)
+            range=range, labels=labels)
         
         return ret
         
     
     @classmethod
-    def from_flat(self, flat, starts=None, centers=None, stops=None, 
-        dstart=None, dstop=None, subtract_off_center=True, range=None):
+    def from_flat(self, flat, starts=None, centers=None, stops=None,
+        dstart=None, dstop=None, subtract_off_center=True, range=None,
+        labels=None):
         """Construct Folded from Flat.
         
         flat : A flat representation of spike times. It could be a simple
@@ -227,7 +237,7 @@ class Folded:
         # Construct Folded, using trial boundaries as calculate, and
         # subtracting off triggers
         return Folded(values=res, starts=starts, stops=stops, centers=centers,
-            subtract_off_center=subtract_off_center, range=range)
+            subtract_off_center=subtract_off_center, range=range, labels=labels)
     
 
 class Binned:
