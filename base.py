@@ -197,7 +197,22 @@ class Folded:
             range=range, labels=labels)
         
         return ret
+    
+    def apply(self, func):
+        """Applies func to each spiketrain in this Folded.
         
+        Returns the results as an array.
+        """
+        return np.asarray(map(func, self.values))
+    
+    def count_in_window(self, start, stop):
+        """Counts spikes in time window on each spiketrain.
+        
+        Return the number of spike times greater than `start` and less than
+        `stop` for each spiketrain.
+        """
+        func = lambda st: sum((st >= start) & (st < stop))
+        return self.apply(func)
     
     @classmethod
     def from_flat(self, flat, starts=None, centers=None, stops=None,
