@@ -24,7 +24,7 @@ def is_auditory(ulabel, ratname=None):
     # Determine whether auditory
     if ratname in ['CR12B', 'CR17B']:
         return True
-    elif ratname in ['YT6A', 'CR20B', 'CR21A']:
+    elif ratname in ['YT6A', 'CR20B', 'CR21A', 'CR24A']:
         return group >= 5
 
 def ulabel2ratname(ulabel):
