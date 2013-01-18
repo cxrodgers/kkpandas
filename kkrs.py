@@ -255,7 +255,17 @@ def unit2analyzable(unit, return_as_string=False):
         return l[0]
     else:
         return l[0] == 'True'
-    
+
+def unit2ulabel(unit, group_multiplier=100, include_group=True):
+    """Convert `unit` xml element into canonical unit label string."""
+    session_name = unit2session_name(unit)
+    unum = unit2unum(unit, group_multiplier, include_group)
+    return make_ulabel(session_name, unum)
+
+def make_ulabel(session_name, unum):
+    """Canonical form of unit label"""
+    return str(session_name) + '-' + str(unum)
+
 def unum2group(unum, error_check=True):
     """By convention, first digit in unit number"""
     if error_check:
