@@ -112,17 +112,27 @@ def find_events(events, start_name, stop_name=None, t_start=None, t_stop=None):
     t_stop : added to time of ending event, or if None, then added to time
         of starting event
     """
-    starts = events[events.event == start_name].time
+    starts = np.asarray(events[events.event == start_name].time)
     stops = None
     if stop_name is not None:
-        stops = events[events.event == stop_name].time
-        if len(stops) != len(starts):
-            # need to drop one from the end
-            1/0
+        stops = np.asarray(events[events.event == stop_name].time)
+
+        # Correct for some edge effects
+        if len(stops) > len(starts):
+            # got an extra stop without a start at the beginning
+            assert np.all(stops[0] < starts)
+            stops = stops[1:]
+        elif len(starts) > len(stops):
+            # got an extra start without a stop at the end
+            assert np.all(starts[-1] > stops)
+            starts = starts[:-1]
+        
+        # Error check
         if np.any(stops < starts):
             # this shouldn't happen after correcting previous error case
             1/0
         
+        # Account for some deltas
         if t_start is not None:
             starts = starts + t_start
         if t_stop is not None:
@@ -130,7 +140,7 @@ def find_events(events, start_name, stop_name=None, t_start=None, t_stop=None):
     else:
         assert t_stop is not None
         stops = starts + t_stop
-    return np.asarray(starts), np.asarray(stops)
+    return starts, stops
 
 def split_events_by_state_name(events, split_state, subtract_off_center=False,
     **kwargs):
