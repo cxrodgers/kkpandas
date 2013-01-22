@@ -33,3 +33,26 @@ def load_trials_info(basename):
     
     return trials_info
 
+
+# Too ugly ... put this in kkrs
+def fold_events_on_trial_starts(rs):
+    """Return a Folded of DataFrames of event times, one per trial
+    
+    The 'state_%d_out' state is detected as the trial boundaries
+    It may or may not be included in each entry, depending on floating
+    point
+    """
+    # This object necessary to get neural start times and btrial labels
+    # for each trial
+    from ns5_process.RS_Sync import RS_Syncer
+    import kkpandas
+
+    # Fold events structure on start times
+    # This is necessary in order to extract the trial start times
+    # for the trials in TRIALNUMBERS only
+    rss = RS_Syncer(rs)
+    events = load_events(rs.full_path)
+    f = kkpandas.Folded.from_flat(flat=events, starts=rss.trialstart_nbase, 
+        subtract_off_center=False, labels=rss.btrial_numbers)
+
+    return f
