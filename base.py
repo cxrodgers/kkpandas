@@ -139,8 +139,62 @@ class Folded:
                 else:
                     val -= center
     
+    def get_slice(self, slc):
+        """Returns a Folded with just the values that are True in mask
+        
+        Converts my data into arrays to slice with `slc`, then returns
+        new object.
+        
+        This could go in __getitem__ but I'm afraid that would lead to weird
+        bugs.
+        
+        So, use __getitem__ for simple indexing: f[0], f[2:5]
+        Use this for fancy indexing: 
+            f.get_slice([0, 2, 4]), f.get_slice(f.apply(len) > 1)
+        """
+        slc = np.asarray(slc) # in case a list was passed
+        
+        # Convert to array to do the slicing
+        # Most will be converted to array in constructor, except for values
+        # So leave values as a list
+        if self.starts is None:
+            starts = None
+        else:
+            starts = np.asarray(self.starts)[slc]
+
+        if self.values is None:
+            values = None
+        else:
+            values = list(np.asarray(self.values, dtype=np.object)[slc])
+
+        if self.stops is None:
+            stops = None
+        else:
+            stops = np.asarray(self.stops)[slc]
+
+        if self.centers is None:
+            centers = None
+        else:
+            centers = np.asarray(self.centers)[slc]
+
+        if self.labels is None:
+            labels = None
+        else:
+            labels = np.asarray(self.labels)[slc]
+
+       
+        # Construct the return value
+        ret = Folded(starts=starts, centers=centers, stops=stops, values=values,
+            range=self.range, labels=labels)
+        
+        return ret
+    
     def __getitem__(self, key):
-        return self.values[key]
+        try:
+            ret = self.values[key]
+        except TypeError:
+            raise TypeError("cannot index by %r, try get_slice" % key)
+        return ret
     
     def __len__(self):
         return len(self.values)
@@ -279,7 +333,14 @@ class Binned:
     _FLOAT_EQ_ERR = 1e-7
     
     def __init__(self, counts, trials, columns=None, edges=None, t=None):
-        """Prefer initialization with edges, but not t"""
+        """Initialize a new Binned.
+        
+        The preferred way to initialize is by specifying `edges`, not `t`,
+        because it easier to derive `t` from `edges` than vice versa.
+        
+        Also note that `edges` is best calculated using linspace, not arange,
+        to mitigate floating point error.
+        """
         # Convert to DataFrame (unless already is)
         self.counts = pandas.DataFrame(counts)
         self.trials = pandas.DataFrame(trials)
@@ -577,6 +638,9 @@ class Binned:
 def define_bin_edges(bins=None, binwidth=None, range=None):
     """Determine bin edges given width or number, and a range to span.
     
+    Specifying the number of bins is more resistant to floating point error
+    than specifying the width of the bin.
+    
     bins : number, or array-like
     binwidth : specified width of each bin
     range : start, stop
@@ -593,6 +657,7 @@ def define_bin_edges(bins=None, binwidth=None, range=None):
         if binwidth is None:
             edges = np.linspace(range[0], range[1], bins + 1)
         else:
+            # TODO: change this to bins = np.rint(np.diff(range) / binwidth)
             edges = np.arange(range[0], range[1], binwidth)    
     
     return edges
