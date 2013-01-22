@@ -202,22 +202,19 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
         # Store the timelock times
         label2timelocks[label] = times
     
-    # Now fold out over timelocked times
+    # Now fold spikes over timelocked times
     if folding_kwargs is None: 
         folding_kwargs = {}
     res = {}    
     for label, timelocks in label2timelocks.items():
-        # Now fold spike times on timelock times    
-        res[label] = Folded.from_flat(
-            flat=spikes, centers=timelocks, **folding_kwargs)
-        
-        # Optionally label each trial
-        # This is sort of a hack ... eventually would like to be able
-        # to access the trials by trial number instead of index
+        # Optionally label with trial labels
         if label_with_btrial_numbers:
-            if hasattr(f, 'labels'):
-                print "warning: overwriting something in Folded"
-            res[label].labels = label2btrial_numbers[label]
+            trial_labels = label2btrial_numbers[label]
+        else:
+            trial_labels = None
+        res[label] = Folded.from_flat(
+            flat=spikes, centers=timelocks, labels=trial_labels, 
+            **folding_kwargs)
         
         # Optionally apply a map to each folded
         if final_folded_map is not None:
