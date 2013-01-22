@@ -10,6 +10,26 @@ import os
 from base import Folded
 import plotting
 from ns5_process import RecordingSession
+from ns5_process import RS_Sync
+
+
+# Methods interacting between RS and kkpandas-like structures
+def fold_events_on_trial_starts(rs):
+    """Return a Folded of DataFrames of event times, one per trial
+    
+    The 'state_%d_out' state is detected as the trial boundaries
+    It may or may not be included in each entry, depending on floating
+    point
+    """
+    # This object necessary to get neural start times and btrial labels
+    # for the trials in TRIALNUMBERS only
+    rss = RS_Sync.RS_Syncer(rs)
+    events = kkpandas.io.load_events(rs.full_path)
+    f = kkpandas.Folded.from_flat(flat=events, starts=rss.trialstart_nbase, 
+        subtract_off_center=False, labels=rss.btrial_numbers)
+
+    return f
+
 
 def is_auditory(ulabel, ratname=None):
     """Determines whether that unit from that rat was in auditory group"""
