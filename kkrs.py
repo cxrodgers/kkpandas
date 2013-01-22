@@ -14,8 +14,7 @@ from ns5_process import RecordingSession
 def is_auditory(ulabel, ratname=None):
     """Determines whether that unit from that rat was in auditory group"""
     # Get the group
-    unum = int(ulabel.split('-')[1])
-    group = unum2group(unum)
+    group = ulabel2group(ulabel)
     
     # Get the ratname
     if ratname is None:
@@ -29,6 +28,15 @@ def is_auditory(ulabel, ratname=None):
 
 def ulabel2ratname(ulabel):
     return ulabel.split('_')[0]
+
+def ulabel2session_name(ulabel):
+    return ulabel.split('-')[0]
+
+def ulabel2unum(ulabel):
+    return int(ulabel.split('-')[1])
+
+def ulabel2group(ulabel):
+    return unum2group(ulabel2unum(ulabel))
 
 
 def RS_plot_tuning_curve(rs, bins, savefig=True, figsize=(15,15), **folding_kwargs):
