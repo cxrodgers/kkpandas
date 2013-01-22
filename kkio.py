@@ -186,7 +186,8 @@ def read_all_from_group(basename='.', group=1, n_samples=-1, n_spikes=-1,
 # This is the main function to intelligently load data from KK files
 def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
     verify_unique_clusters=True, add_group_as_column=True, 
-    load_memoized=False, save_memoized=False):
+    load_memoized=False, save_memoized=False,
+    also_get_features=False, also_get_waveforms=False, n_samples=-1, n_channels=-1):
     """Main function for loading KlustaKwik data.
     
     basename : path to, or basename of, files
@@ -202,6 +203,10 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
         cluster ids across groups
     add_group_as_column : if True, then the returned value has a column
         for the group from which the spike came.
+    also_get_features, also_get_waveforms : if True, then the returned
+        value has columns for these as well.
+    n_samples, n_channels : Only necessary if also_get_waveforms. Only
+        one of these two parameters is necessary in that case.
     
     Memoization
     ---
@@ -275,6 +280,39 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
         else:
             group_d[group] = pandas.DataFrame(
                 {spiketimes.name: spiketimes, unit_ids.name: unit_ids})
+        
+        # optionally get features too
+        if also_get_features:
+            assert 'fet' in kfs.available_filetypes
+            # Read the feature file
+            fetfile = kfs.fetfiles[group]
+            features = read_fetfile(
+                fetfile, guess_time_column=True, return_nfeatures=False)
+            
+            # Pop off the time column since we don't need it
+            features.pop('time')
+            
+            # Concatenate to df for this group
+            assert len(features) == len(group_d[group])
+            group_d[group] = pandas.concat([group_d[group], features], axis=1)
+        
+        # optionally get waveforms too
+        if also_get_waveforms:
+            assert 'spk' in kfs.available_filetypes
+            # Read the spike file
+            # We know the number of spikes, but we need either the number
+            # of samples or the number of channels
+            spkfile = kfs.spkfiles[group]
+            waveforms = read_spkfile(spkfile, n_spikes=len(group_d[group]), 
+                n_samples=n_samples, n_channels=n_channels)
+            
+            # Flatten, convert to dataframe, and concatenate to result
+            nsamptot = waveforms.shape[1] * waveforms.shape[2]
+            waveforms_df = pandas.DataFrame(
+                waveforms.swapaxes(1, 2).reshape(waveforms.shape[0], nsamptot), 
+                columns=['wf%d' % n for n in range(nsamptot)])
+            group_d[group] = pandas.concat(
+                [group_d[group], waveforms_df], axis=1)
     
     # optionally check if groups contain same cluster
     if verify_unique_clusters:
