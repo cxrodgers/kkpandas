@@ -54,6 +54,9 @@ class Folded:
         values : list or DataFrame of length n_trials.
             Each entry contains the spike times on that trial.
             Each entry is aligned to the corresponding entry in `centers`
+            
+            values HAS to be stored internally as a list.
+            if it is an array, then the dtype gets messed up for empty arrays
         
         dataframe_like : Flag controlling whether the values are DataFrame
             or array. 
@@ -165,7 +168,12 @@ class Folded:
         if self.values is None:
             values = None
         else:
-            values = list(np.asarray(self.values, dtype=np.object)[slc])
+            # something gets all messed up here with fancy indexing
+            # if all of the entries in self.values are empty
+            if slc.dtype == np.dtype('bool'):
+                values = [self.values[i] for i in np.where(slc)[0]]
+            else:
+                values = [self.values[i] for i in slc]
 
         if self.stops is None:
             stops = None
