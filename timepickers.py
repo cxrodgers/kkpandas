@@ -13,7 +13,7 @@ the io module.
 import numpy as np
 from base import Folded
 import utility
-asdfsadfasfdf
+
 class TrialPicker:   
     """Object for picking trial numbers based on trials_info"""
     @classmethod
