@@ -233,28 +233,16 @@ def plot_tuning_curve(dfolded, tc_freq_labels, tc_atten_labels, bins, figsize=(1
 # Convenience methods for linking kk_servers and recording sessions
 # Probably this should be encapsulated in a kk_superserver object
 # Would be nice to combine this with the info from getstarted
+# This is done! See my.dataload
 def session2rs(session_name, kk_servers, data_dirs):
-    for ratname, kk_server in kk_servers.items():
-        if session_name not in kk_server.session_list:
-            continue
-        
-        # Session found
-        data_dir = data_dirs[ratname]
-        rs = RecordingSession.RecordingSession(
-            os.path.join(data_dir, session_name))
-        
-        return rs
-    
-    # No session ever found
-    raise BaseException("No session like %s found!" % session_name)
+    import warnings, my.dataload
+    warnings.warn('deprecated, see my.dataload')
+    return my.dataload.session2rs(session_name)
 
 def session2kk_server(session_name, kk_servers):
-    for ratname, kk_server in kk_servers.items():
-        if session_name in kk_server.session_list:
-            return kk_server
-        
-    raise BaseException("No session like %s found!" % session_name)
-
+    import warnings, my.dataload
+    warnings.warn('deprecated, see my.dataload')
+    return my.dataload.session2kk_server(session_name)
 
 # These are methods specifically for my XML convention
 def unit2unum(unit, group_multiplier=100, include_group=True):
