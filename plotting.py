@@ -16,20 +16,22 @@ def plot_binned_by_level(binned, ax=None):
     plt.show()
     return ax
 
-def plot_binned(binned, ax=None, **kwargs):
+def plot_binned(binned, units=None, ax=None, legend=True, **kwargs):
     if ax is None:
         f = plt.figure()
         ax = f.add_subplot(111)
     
     csl = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'gray']
-    for n, (label, col) in enumerate(binned.rate.iteritems()):
+    
+    for n, (label, col) in enumerate(binned.rate_in(units).iteritems()):
         if 'color' in kwargs:
             ax.plot(binned.t, col.values, label=label, **kwargs)
         else:
             color = csl[np.mod(n, len(csl))]
             ax.plot(binned.t, col.values, color=color, label=label, **kwargs)
     
-    ax.legend(loc='best')
+    if legend:
+        ax.legend(loc='best')
     plt.show()
     return ax
 
