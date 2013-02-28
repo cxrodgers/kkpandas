@@ -448,6 +448,18 @@ class Binned:
     def rate(self):
         return self.counts / self.trials.astype(np.float)
     
+    def rate_in(self, units='Hz'):
+        rate = self.rate
+        
+        if units == 'Hz' or units == 'hz':            
+            dt = np.diff(self.edges).mean()
+            rate = rate / dt
+        elif units is None:
+            pass
+        else:
+            raise ValueError("unknown unit %s" % units)
+        return rate
+    
     # Construction methods    
     @classmethod
     def from_folded(self, folded, bins=None, starts=None, stops=None,
