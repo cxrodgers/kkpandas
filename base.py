@@ -653,7 +653,16 @@ class Binned:
 
         return Binned.from_dict_of_folded(dfolded, bins=bins, **kwargs)
 
+def folded_rate(folded):
+    """Utility funtion for rate by trial in folded. Put this in folded."""
+    res = []
+    for t1, t2, vl in zip(folded.starts, folded.stops, folded.values):
+        res.append(len(vl) / float(t2 - t1))
+    return np.asarray(res)
 
+def concat_binned(list_of_binned, keys):
+    """TODO. See Binnned.from_dict_of_binned"""
+    pass
 
 def define_bin_edges(bins=None, binwidth=None, range=None):
     """Determine bin edges given width or number, and a range to span.
