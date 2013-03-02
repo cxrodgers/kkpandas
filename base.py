@@ -392,6 +392,13 @@ class Binned:
         return Binned(counts=self.counts[key], trials=self.trials[key],
             t=self.t[key])
     
+    def __len__(self):
+        return len(self.counts)
+    
+    @property
+    def shape(self):
+        return self.counts.shape
+    
     def rename(self, columns=None, multi_index=True):
         """Inplace rename columns"""
         self.counts = self.counts.rename(columns=columns)
