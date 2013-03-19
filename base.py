@@ -157,6 +157,10 @@ class Folded:
         """
         slc = np.asarray(slc) # in case a list was passed
         
+        if len(slc) == 0:
+            return Folded(starts=[], centers=[], stops=[], values=[],
+                range=self.range, labels=[])
+        
         # Convert to array to do the slicing
         # Most will be converted to array in constructor, except for values
         # So leave values as a list
