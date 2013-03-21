@@ -33,6 +33,7 @@ continuously valued functions of time, by binning or smoothing for instance.
 import numpy as np
 import pandas
 from utility import timelock
+import copy, warnings
 
 class Folded:
     """Stores spike times on each trial timelocked to some event in that trial.
@@ -702,6 +703,103 @@ def define_bin_edges(bins=None, binwidth=None, range=None):
     
     return edges
 
+
+def define_range(data_range=None, t_start=None, t_stop=None, times=None,
+    range=None):
+    """Defines the range of a set of times.
+    
+    1.  If `data_range` is a 2-tuple, we start with this for the data range.
+        Otherwise we start with (None, None)
+    2.  Replace any None in the 2-tuple with t_start, t_stop
+    3.  Replace any remaining None with times.min(), times.max()
+    
+    If none of these strategies work, raises ValueError rather than return
+    a munged data range.
+    
+    `range` is an obsolete synonym for `data_range` that will generate
+    a warning.
+    """
+    # Obsolete keyword `range`
+    if range is not None:
+        warnings.warn('`range` is an obsolete keyword arg, use `data_range`')
+        if data_range is None:
+            data_range = range
+    
+    # First listify
+    if data_range is None:
+        data_range = [None, None]
+    else:
+        data_range = list(data_range)
+
+    # Start with t_start, t_stop if no full range provided
+    if data_range[0] is None:
+        data_range[0] = t_start
+    if data_range[1] is None:
+        data_range[1] = t_stop
+    
+    # Replace with data actual range
+    try:
+        if data_range[0] is None:
+            data_range[0] = np.min(times)
+        if data_range[1] is None:
+            data_range[1] = np.max(times)
+    except ValueError:
+        raise ValueError(
+            "cannot take min or max of %r to calculate range" % times)
+    
+    # Error check
+    if None in data_range:
+        raise ValueError("cannot calculate data range from " +
+            "data_range: %r t_start: %r t_stop: %r times: %r" % (
+            data_range, t_start, t_stop, times))
+    
+    return tuple(data_range)
+
+def define_bin_edges2(bins=None, binwidth=None, data_range=None, 
+    t_start=None, t_stop=None, times=None, range=None):
+    """Canonical wawy to determine bin edges from various desiderata.
+    
+    This should be phased in in place of define_bin_edges.
+    
+    If `bins` is already an iterable, it is returned without further ado.
+    Otherwise, the data range is calculated using `define_range` and the
+    following kwargs: `data_range`, `t_start`, `t_stop`, `times`, `range`
+    Note that `range` is obsolete!
+    
+    Then, if `bins` is an integer, it is used to specify the bin edges
+    using `linspace` to span the data range. This is the preferred way.
+    
+    Otherwise, if `bins` is None, then `binwidth` is used to calculate a
+    number of bins. This is more ambiguous, because if the data range is not
+    equally divided by bin width, should the range or the binwidth be changed?
+    This function changes to bin width to preserve the range. Note that
+    rounding error can cause unpredictable effects here.
+    
+    Returns: bin_edges, with length 1 greater than the number of bins
+    """
+    # Stop if done
+    if np.iterable(bins):
+        if None in bins:
+            warnings.warn('None in the provided bins, overwriting')
+        else:
+            return bins
+    
+    # Calculate range
+    data_range = define_range(data_range=data_range, t_start=t_start,
+        t_stop=t_stop, times=times, range=range)
+    
+    # Error check
+    # We could return a backwards range but is this ever useful?
+    if data_range[0] > data_range[1]:
+        raise ValueError("I got a backwards range: %d" % data_range)
+    
+    # Use binwidth to estimate number of bins if necessary
+    if bins is None:
+        bins = np.rint((data_range[1] - data_range[0]) / binwidth)
+    
+    # Calculate
+    edges = np.linspace(data_range[0], data_range[1], bins + 1)  
+    return edges
 
 from DiscreteAnalyze.PointProc import smooth_event_train
 class GaussianSmoother:
