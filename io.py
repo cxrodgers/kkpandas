@@ -12,6 +12,9 @@ def load_events(basename, min_time=None, max_time=None):
     
     If min_time and/or max_time are not None, events outside of this time
     will be discarded.
+    
+    These will be in whatever timebase the 'events' file uses, currently
+    neural time.
     """
     events = pandas.read_table(
         os.path.join(basename, 'events'), index_col=None,
