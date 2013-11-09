@@ -222,3 +222,65 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
                 dtype=final_folded_map_dtype)
 
     return res
+
+
+
+def pipeline(trials_info,
+    spike_server=None, spike_server_kwargs=None,
+    sort_spikes=True,
+    time_picker=None, time_picker_kwargs=None,
+    trial_picker=TrialPicker, trial_picker_kwargs=None,
+    folding_kwargs=None,
+    label_with_btrial_numbers=True):
+    """Replacement for pipeline_overblock_oneevent
+    
+    In particular, this allows the use of a different time picker.
+    time_picker must be something that responds to:
+        time_picker.pick(trial_numbers)
+    with a list of times corresponding to each trial number.
+    
+    The trial numbers match those obtained from trial_picker, so
+    typically behavioral trial numbers.
+    
+    The previous version required EventTimePicker, which operated on a Folded
+    of events. Also, some special logic and RS_syncing was required to handle
+    the case of behavioral trials not present in neural. This version
+    offloads that to time_picker.
+    """
+    # Defaults
+    if folding_kwargs is None: 
+        folding_kwargs = {}
+    if spike_server_kwargs is None:
+        spike_server_kwargs = {}
+    if trial_picker_kwargs is None:
+        trial_picker_kwargs = {}
+    
+    # Get the spikes and optionally resort just to be sure
+    spikes = np.asarray(spike_server.get(**spike_server_kwargs))
+    if sort_spikes:
+        spikes = np.sort(spikes)
+    
+    # Select trials from behavior
+    # This object returns a list of tuples, one for each category
+    # Each tuple is (label, trial_numbers)
+    # TODO: make trial_picker load trials_info itself, if it needs it
+    picked_trials_l = trial_picker.pick(trials_info, **trial_picker_kwargs)
+    
+    # Iterate over categories and store in dfolded
+    dfolded = {}
+    for label, trial_numbers in picked_trials_l:
+       # Pick times for these trials
+        trial_times = time_picker.pick(trial_numbers, **time_picker_kwargs)
+    
+        # Optionally label
+        if label_with_btrial_numbers:
+            trial_labels = np.asarray(trial_numbers)
+        else:
+            trial_labels = None
+        
+        # Fold and store
+        dfolded[label] = Folded.from_flat(
+            flat=spikes, centers=trial_times, labels=trial_labels, 
+            **folding_kwargs)
+
+    return dfolded
