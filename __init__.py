@@ -5,7 +5,7 @@ from kkio import *
 from base import Folded, Binned
 
 # Good helper functions
-from base import define_range, define_bin_edges2
+from base import define_range, define_bin_edges2, is_equal, what_differs
 
 # Bring in the other files
 import utility

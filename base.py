@@ -320,6 +320,47 @@ class Folded:
         # subtracting off triggers
         return Folded(values=res, starts=starts, stops=stops, centers=centers,
             subtract_off_center=subtract_off_center, range=range, labels=labels)
+
+
+# Function to compare two folded
+# Should maybe be an __eq__ method of folded?
+def what_differs(folded1, folded2):
+    """Returns a string about what differs, or None if equal"""
+    if len(folded1) != len(folded2):
+        return 'different lengths'
+    
+    if not np.allclose(folded1.starts, folded2.starts):
+        return 'starts'
+    if not np.allclose(folded1.stops, folded2.stops):
+        return 'stops'
+    if not np.allclose(folded1.centers, folded2.centers):
+        return 'centers'
+    if not np.allclose(folded1.range, folded2.range):
+        return 'range'
+    
+    # Test labels
+    if folded1.labels is None:
+        if folded2.labels is None:
+            pass
+        else:
+            return 'labels case1'
+    else:
+        if folded2.labels is None:
+            return 'labels case2'
+        else:
+            if not np.allclose(folded1.labels, folded2.labels):
+                return 'labels case3'
+
+    # Test values
+    for val1, val2 in zip(folded1.values, folded2.values):
+        if not np.allclose(val1, val2):
+            return 'values'
+    return None
+
+def is_equal(folded1, folded2):
+    """Returns True if folded1 and folded2 are equal, up to floating point"""
+    return what_differs(folded1, folded2) is None
+
     
 
 class Binned:
