@@ -103,6 +103,29 @@ class EventTimePicker:
         return res
 
 
+class TrialsInfoTimePicker:
+    """Picks times from columns in trials_info, rather than by event name
+    
+    Also uses a different, more general syntax. Currently works only with
+    pipeline and not pipeline_overblock_oneevent
+    """
+    def __init__(self, trials_info=None):
+        self.trials_info = trials_info
+    
+    def pick(self, trial_numbers, event_name='stim_onset'):
+        """Returns times of event on specified trials
+        
+        event_name must be a column in trials_info
+        Trials that do not exist will be silently dropped!
+        """
+        # Drop those that don't exist
+        idxs = np.asarray(trial_numbers)
+        mask = np.in1d(idxs, np.asarray(self.trials_info.index))
+        
+        # Index and return
+        return self.trials_info[event_name][idxs].values
+
+
 
 # Other time-picking methods
 # Actually not using these at the moment but they may come in handy later
