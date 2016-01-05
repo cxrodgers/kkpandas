@@ -98,7 +98,7 @@ class Folded:
                 try:
                     values[0]['time']
                     dataframe_like = True
-                except (KeyError, ValueError, TypeError):
+                except (KeyError, ValueError, TypeError, IndexError):
                     dataframe_like = False
         self.dataframe_like = dataframe_like
         
@@ -298,7 +298,7 @@ class Folded:
         dataframe_like = True
         try:
             spike_times = flat['time']
-        except (KeyError, ValueError, TypeError):
+        except (KeyError, ValueError, TypeError, IndexError):
             spike_times = flat
             dataframe_like = False
     
