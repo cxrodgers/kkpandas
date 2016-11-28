@@ -46,7 +46,7 @@ class Folded:
     convert between time-locked and original spike times.
     """
     def __init__(self, values, starts, stops, centers=None, labels=None,
-        subtract_off_center=False, range=None, dataframe_like=None):
+        subtract_off_center=False, range=None, dataframe_like=False):
         """Initialize a new Folded.
         
         Generally you do not call this directly, but use one of the class
@@ -295,12 +295,7 @@ class Folded:
             trial
         """
         # Figure out whether input is structured or simple
-        dataframe_like = True
-        try:
-            spike_times = flat['time']
-        except (KeyError, ValueError, TypeError, IndexError):
-            spike_times = flat
-            dataframe_like = False
+        dataframe_like = False
     
         # Get indexes into flat with timelock
         # We need to get the starts/centers/stops as actually calculated
