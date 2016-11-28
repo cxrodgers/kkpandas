@@ -284,7 +284,7 @@ class Folded:
     @classmethod
     def from_flat(self, flat, starts=None, centers=None, stops=None,
         dstart=None, dstop=None, subtract_off_center=True, range=None,
-        labels=None):
+        labels=None, flat_range=None):
         """Construct Folded from Flat.
         
         flat : A flat representation of spike times. It could be a simple
@@ -293,9 +293,40 @@ class Folded:
             windows. See `timelock`
         subtract_off_center : whether to align events to trigger on each
             trial
+        
+        flat_range : if not None, this is used to deal with the case where
+            the events begin before the spikes, or end after the spikes,
+            in which case those events should not be included.
+            flat_range should be a tuple (flat_start, flat_stop).
+            Events for which center + dstart is before flat_start, or
+            center + dstop is after flat_stop, are discarded.
         """
-        # Figure out whether input is structured or simple
+        # Support for this has been removed
         dataframe_like = False
+        spike_times = flat
+        
+        # Drop events outside the range of the spikes
+        if flat_range is not None:
+            # This requires centers, dstart, and dstop
+            if centers is None or dstart is None or dstop is None:
+                raise ValueError("flat_range is only compatible with "
+                    "centers, dstart, and dstop")
+            
+            # Let's make sure we're not dropping nan, which is a symptom
+            # that something else has gone wrong
+            if np.any(np.isnan(centers)):
+                raise ValueError("centers contains NaN")
+            
+            # Identify events to include
+            good_events = (
+                (centers > flat_range[0] + dstart) &
+                (centers < flat_range[1] + dstop)
+            )
+            
+            # Slice centers and labels accordingly
+            centers = centers[good_events]
+            if labels is not None:
+                labels = labels[good_events]
     
         # Get indexes into flat with timelock
         # We need to get the starts/centers/stops as actually calculated
