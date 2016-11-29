@@ -143,7 +143,7 @@ def assign_trials_to_events(events, trial_times, dstart, dstop):
         trials are dropped.
     """
     # Get the events assigned to each trial
-    event_indices_by_trial = kkpandas.utility.timelock(
+    event_indices_by_trial = timelock(
         events.values, trial_times.values, 
         dstart=dstart, dstop=dstop, return_value='index')
     
