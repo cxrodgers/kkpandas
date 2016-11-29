@@ -703,6 +703,8 @@ class Binned:
         each trial index to each trial in folded, then calls
         from_dict_of_folded
         
+        If folded.labels is not None, it will be used as the columns
+        
         starts, stops, range : used for folding each trial, otherwise
             taken from folded
         bins, **kwargs : sent to Binned constructor
@@ -721,14 +723,20 @@ class Binned:
         if range is None:
             range = folded.range
         
+        # Check if labels available
+        if folded.labels is not None:
+            keys = folded.labels
+        else:
+            keys = np.arange(len(folded), dtype=np.int)
+        
         dfolded = {}
-        for n in np.arange(len(folded), dtype=np.int):
+        for n, key in enumerate(keys):
             # Create a folded from a single trial
             # Would be nice if this were a method in folded
             ff = Folded(values=[folded[n]],
                 starts=[starts[n]], stops=[stops[n]], range=range,
                 subtract_off_center=False) 
-            dfolded[n] = ff
+            dfolded[key] = ff
 
         return Binned.from_dict_of_folded(dfolded, bins=bins, **kwargs)
 
