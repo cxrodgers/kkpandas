@@ -129,6 +129,51 @@ def timelock(a1, a2=None, start=None, stop=None, dstart=None, dstop=None,
 
 
 
+def assign_trials_to_events(events, trial_times, dstart, dstop):
+    """Lock times in event_df[event_col] to trials in trial_time_series.
+    
+    events : Series with event times of interest
+    trial_times : Series with trial times as values and trial
+        numbers as index.
+    dstart, dstop : passed to time lock
+    
+    Returns : trial_labels
+        Series. The values are the trial numbers and the index are the
+        event indices. Events that were assigned to no trial or to multiple
+        trials are dropped.
+    """
+    # Get the events assigned to each trial
+    event_indices_by_trial = kkpandas.utility.timelock(
+        events.values, trial_times.values, 
+        dstart=dstart, dstop=dstop, return_value='index')
+    
+    # Construct return data dtype
+    res = pandas.Series(np.empty(len(events)), index=events.index)
+    res.values.fill(np.nan)
+    bad_indices = pandas.Series(np.zeros(len(events)), index=events.index,
+        dtype=np.bool)
+    
+    # Assign each trial
+    for n_trial, event_indices in enumerate(event_indices_by_trial):
+        # Mark doubly-assigned indices as bad
+        subres = res.iloc[event_indices]
+        bad_event_indices = subres.index[~subres.isnull()]
+        bad_indices.ix[bad_event_indices] = True
+        
+        # Assign trial label
+        res.iloc[event_indices] = trial_times.index[n_trial]
+    
+    # Drop bad indices
+    res = res.ix[~bad_indices]
+    
+    # Drop unassigned
+    res = res.dropna()
+    
+    # Convert to int
+    res = res.astype(trial_times.index.dtype)
+    
+    return res
+
 
 # Utility functions for data frames
 def startswith(df, colname, s):
