@@ -640,6 +640,9 @@ class Binned:
         
         # Auto set the bins
         if not np.iterable(bins):
+            if len(dfolded) == 0:
+                raise ValueError("cannot identify bins from empty dfolded")
+            
             # Determine spanning range
             all_ranges = np.array([val.range for val in dfolded.values()])
             range = (all_ranges[:, 0].min(), all_ranges[:, 1].max())
