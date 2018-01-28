@@ -15,7 +15,7 @@ import os.path
 
 def timelock(a1, a2=None, start=None, stop=None, dstart=None, dstop=None,
     return_value='original', error_check=True, return_boundaries=False,
-    warn_if_overlap=True):
+    warn_if_overlap=False):
     """Returns list of peri-event times.
     
     This is the inner-loop in most spike analysis and is optimized here
