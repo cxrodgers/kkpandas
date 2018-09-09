@@ -412,14 +412,18 @@ class Binned:
     """
     _FLOAT_EQ_ERR = 1e-7
     
-    def __init__(self, counts, trials, columns=None, edges=None, t=None):
+    def __init__(self, counts, trials, edges, columns=None):
         """Initialize a new Binned.
         
-        The preferred way to initialize is by specifying `edges`, not `t`,
-        because it easier to derive `t` from `edges` than vice versa.
-        
-        Also note that `edges` is best calculated using linspace, not arange,
-        to mitigate floating point error.
+        `counts` : 2d array or DataFrame of spike counts
+        `trials` : 2d array or DataFrame of trial counts
+            Same shape as `counts`
+        `columns` : pandas.Index to assign to the columns
+            Should have length equal to counts.shape[1]
+        `edges` : The bin edges that were used
+            Should have length equal to counts.shape[0] + 1
+            It's best to calculate this with np.linspace, not np.arange,
+            to minimize floating point error.
         """
         # Convert to DataFrame (unless already is)
         self.counts = pandas.DataFrame(counts)
@@ -427,35 +431,13 @@ class Binned:
         
         # Initialize category names
         if columns is not None:
-            if self.counts.columns is None:
-                # Actually this never occurs
-                # Is this a use-case?
-                self.counts.columns = columns
-            else:
-                self.counts = self.counts[columns]
-            
-            if self.trials.columns is None:
-                self.trials.columns = columns
-            else:
-                self.trials = self.trials[columns]
-            
+            self.counts.columns = columns
+            self.trials.columns = columns
         
         # set up time points
-        if t is None and edges is None:
-            # Nothing provided ... guess
-            self.t = np.arange(counts.shape[0])
-            self.edges = np.arange(counts.shape[0] + 1)
-        elif t is None and edges is not None:
-            # edges provided, calculate t
-            self.t = edges[:-1] + np.diff(edges) / 2.
-            self.edges = edges
-        else:
-            # only t provided, or both are provided
-            self.edges = edges
-            self.t = t
-        
-        # calculate rate
-        #self.rate = counts / trials.astype(np.float)
+        # edges provided, calculate t
+        self.t = edges[:-1] + np.diff(edges) / 2.
+        self.edges = edges
     
     # Wrapper functions around DataFrame methods
     def __getitem__(self, key):
@@ -541,7 +523,7 @@ class Binned:
     
     # Construction methods    
     @classmethod
-    def from_folded(self, folded, bins=None, starts=None, stops=None,
+    def from_folded(self, folded, bins=None,
         meth=np.histogram):
         """Construct Binned object by histogramming list-like Folded.
         
@@ -550,40 +532,36 @@ class Binned:
         
         If you are trying to form a Binned with more than one category, see
         from_dict_of_folded
+
+        It is no longer supported for the entries in folded to have
+        differing dstart and dstop (and this never worked properly
+        anyway). dstart and dstop should be the same for each trial. This
+        function simply concatenates the times from each folded and histograms
+        with the bins you specify. So for instance, if bins is outside the
+        window that was folded, you will just get zeros back.
         
         Variables:
         folded : list-like, each entry is an array of locked times
+            That is, each time is relative to the locking event ("center")
+            for that trial.
+
         bins : passed to np.histogram. We also pass the `range` attribute
             of `folded` to histogram. This means that you can specify bins
             exactly (in which case `range` is ignored), or you can specify
             a number of bins (in which case `range` is used to ensure
             consistent bin sizes regardless of when spikes occurred). This
             assumes the `range` attribute of `folded` is specified correctly...
+            
+            The times in `folded` are binned according to these edges. So,
+            these edges should be relative to the locking events, just like
+            the times are.
         meth : a method, default np.histogram, that takes a concatenated list
             of spike times and produces a "rate over time". It will also
             receive the `range` attribute of `folded`, if available.
             Another option:
             gs = kkpandas.base.GaussianSmoother(smoothing_window=.005)
             meth = gs.smooth
-        
-        The following attributes are collected from `folded` if available,
-        or otherwise you can specify them as arguments. They are necessary
-        because this method needs to know when spike collection began and
-        ended for each trial.
-        starts : list-like, same length as `folded`, the time at which 
-            spike collection began for each trial
-        stops : when the spike collection ended for each trial
-        
-        The purpose of these attributes is to construct the attribute
-        `trials`, which contains the number of trials in each bin.
         """
-        # Get trial times from object if necessary
-        if starts is None:
-            starts = np.asarray(folded.starts)
-        
-        if stops is None:
-            stops = np.asarray(folded.stops)
-        
         # Determine range
         try:
             range = folded.range
@@ -604,8 +582,11 @@ class Binned:
         # Here is the actual histogramming
         counts, edges = meth(times, bins=bins, range=range)
         
-        # Now we calculate how many trials are included in each bin
-        trials = np.array([np.sum((stops - starts) > e) for e in edges[:-1]])
+        # Assume all trials included in every bin
+        # Proper way is to count edges for which edge > (start - center) and
+        # edge < (stop - center), or something, but not sure how to handle the
+        # floating comparison properly.
+        trials = np.array([len(folded)] * len(counts)).astype(np.int)
         
         # Now construct and return
         return Binned(counts=counts, trials=trials, edges=edges)
@@ -658,6 +639,62 @@ class Binned:
             binned_d[key] = Binned.from_folded(dfolded[key], bins=bins, **kwargs)
 
         return Binned.from_dict_of_binned(binned_d, keys=keys)
+
+    @classmethod
+    def from_list_of_folded(self, folded_l, bins, columns=None, **kwargs):
+        """Initialize a Binned from a list of Folded, one column per Folded
+        
+        Simple wrapper function that creates a Binned with one column
+        per folded in a list.
+        
+        folded_l : list of Folded
+        bins : Array-like of bin edges
+        columns : pandas.Index to put on the columns. Must be same length   
+            as `folded_l`. If None, uses integer labels.
+        kwargs : sent to from_folded for each category
+        """
+        # Generate columns
+        if columns is None:
+            columns = range(len(folded_l))
+        
+        # Bin each entry in folded_l
+        binned_l = []
+        for folded in folded_l:
+            binned = Binned.from_folded(folded, bins=bins, **kwargs)
+            binned_l.append(binned)
+        
+        # Concatenate
+        return Binned.from_list_of_binned(binned_l, columns=columns)
+    
+    @classmethod
+    def from_list_of_binned(self, binned_l, columns=None):
+        """Initialize a Binned from a list of Binned.
+        
+        Concatenates each Binned in `binned_l` along the column axis.
+        
+        The `counts` and `trials` of each Binned are concatenated. The
+        edges are checked for consistency. A new Binned is created with
+        the concatenated results, the consistent edges, and the provided
+        columns (if any).
+        """
+        # Concatenate counts and trials
+        # Do not verify_integrity, because they are likely all named "0"
+        # We'll fix below
+        all_counts = pandas.concat([binned.counts for binned in binned_l],
+            axis=1)
+        all_trials = pandas.concat([binned.trials for binned in binned_l],
+            axis=1)
+        
+        # Ensure consistent time base
+        all_edges = np.array([binned.edges for binned in binned_l])
+        edges = np.mean(all_edges, axis=0)
+        err = np.max(np.abs(all_edges - edges))
+        if err > self._FLOAT_EQ_ERR:
+            raise ValueError("dict of binned appear not to share timebase")
+        
+        # Construct (note override of column names)
+        return Binned(counts=all_counts, trials=all_trials, edges=edges,
+            columns=columns)        
     
     @classmethod
     def from_dict_of_binned(self, dbinned, keys=None):
