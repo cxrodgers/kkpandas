@@ -438,7 +438,7 @@ class Binned:
         # edges provided, calculate t
         self.t = edges[:-1] + np.diff(edges) / 2.
         self.edges = edges
-    
+
     # Wrapper functions around DataFrame methods
     def __getitem__(self, key):
         """This actually needs to work for either time indexes or 
@@ -602,7 +602,7 @@ class Binned:
         dfolded : dict from category name to Folded of replicates from
             that category
         keys : ordered category names that you wish to include. If None,
-            uses dfolded.keys()
+            uses sorted(dfolded.keys())
         bins : number or array
             If you wish to specify bins exactly, pass as array
             If you specify the number of bins, then in order to keep the
@@ -617,7 +617,7 @@ class Binned:
         if the range attribute is not set on the values in dfolded.
         """
         if keys is None:
-            keys = dfolded.keys()
+            keys = sorted(dfolded.keys())
         
         # Auto set the bins
         if not np.iterable(bins):
@@ -697,42 +697,73 @@ class Binned:
             columns=columns)        
     
     @classmethod
-    def from_dict_of_binned(self, dbinned, keys=None):
+    def from_dict_of_binned(self, dbinned, keys=None, names=None,
+        remove_useless_level=True, sort_columns=True):
         """Initialize a Binned from a dict of Binned.
         
-        This is a concatenation-like operation: the result contains
-        each of the values in dbinned in columns titled by keys
+        This uses pandas.concat to concatenate the `counts` and `trials`
+        of [dbinned[key] for key in keys]. The elements in keys control
+        which elements of `dbinned` are included, and in what order.
         
-        TODO: make this work when the keys of dbinned are tuples. This should
-        probable generate a multi-index on the columns
+        The elements of `keys` become top level(s) on a MultiIndex of
+        columns in the result. `names` can be used to control their names.
+        
+        keys : iterable
+            Elements are taken from `dbinned` in this order. If None, all
+            of the keys of `dbinned` are used in sorted order.
+        
+        names : iterable
+            Names of the resulting level(s) in a MultiIndex on the columns.
+        
+        remove_useless_level : boolean
+            If True and if the lowest level of the resulting MultiIndex
+            is always length 1, drop that level. This happens when each
+            element in `dbinned` is a single trial.
+        
+        sort_columns : boolean
+            If True, sort the columns, after removing useless level
+            if applicable.
         """
         # If no keys specified, use all keys in sorted order
         if keys is None:
             keys = sorted(dbinned.keys())
 
         # Construct counts and trials by concatenating the underlying
-        # objects. This method actually results in a MultiIndex with the
-        # first level being `key`. We override below, though perhaps
-        # this is actually a more reasonable behavior ...
-        # Note this also randomizes the column order, but we'll define
-        # it in the call to Binned
+        # objects. This creates a MultiIndex, where the keys are the top
+        # level, and the original column names are the lower level.
         all_counts = pandas.concat(
-            {key: dbinned[key].counts for key in keys}, axis=1)
-        all_counts.columns = [c[0] for c in all_counts.columns]
+            [dbinned[key].counts for key in keys], axis=1, keys=keys,
+            names=names, verify_integrity=True)
         all_trials = pandas.concat(
-            {key: dbinned[key].trials for key in keys}, axis=1)
-        all_trials.columns = [c[0] for c in all_trials.columns]    
+            [dbinned[key].trials for key in keys], axis=1, keys=keys,
+            names=names, verify_integrity=True)
         
-        # The time base should be the same
+        # When each Binned in `dbinned` consists of a single trial, then
+        # the lowest level is often useless or redundant with the keys.
+        if remove_useless_level:
+            # Count columns per binned
+            n_columns_per_binned = np.array(
+                [dbinned[key].counts.shape[1] for key in keys])
+            
+            # Drop the level if it is useless
+            if (n_columns_per_binned == 1).all():
+                all_counts = all_counts.droplevel(-1, axis=1)
+                all_trials = all_trials.droplevel(-1, axis=1)
+        
+        # Sort columns
+        if sort_columns:
+            all_counts = all_counts.sort_index(axis=1)
+            all_trials = all_trials.sort_index(axis=1)
+        
+        # Error check that the time base is consistent across all Binned
         all_edges = np.array([dbinned[key].edges for key in keys])
         edges = np.mean(all_edges, axis=0)
         err = np.max(np.abs(all_edges - edges))
         if err > self._FLOAT_EQ_ERR:
             raise ValueError("dict of binned appear not to share timebase")
-        
-        # Construct (note override of column names)
-        return Binned(counts=all_counts, trials=all_trials, edges=edges,
-            columns=keys)
+
+        # Construct
+        return Binned(counts=all_counts, trials=all_trials, edges=edges)
     
     @classmethod
     def from_folded_by_trial(self, folded, bins=None, starts=None, stops=None,
@@ -742,6 +773,8 @@ class Binned:
         Right now this is a little hacky. It just creates a dict from 
         each trial index to each trial in folded, then calls
         from_dict_of_folded
+        
+        TODO: insert this functionality into from_folded
         
         If folded.labels is not None, it will be used as the columns
         
@@ -773,6 +806,7 @@ class Binned:
         for n, key in enumerate(keys):
             # Create a folded from a single trial
             # Would be nice if this were a method in folded
+            # TODO: slice the labels of folded as well
             ff = Folded(values=[folded[n]],
                 starts=[starts[n]], stops=[stops[n]], range=range,
                 subtract_off_center=False) 
