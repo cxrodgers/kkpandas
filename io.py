@@ -1,4 +1,5 @@
 """Methods for loading non-spike data"""
+from builtins import range
 import os.path
 import pandas
 import numpy as np, warnings
@@ -22,10 +23,10 @@ def load_events(basename, min_time=None, max_time=None):
     
     if min_time is not None:
         events = events[events.time >= min_time]
-        events.index = range(len(events))
+        events.index = list(range(len(events)))
     if max_time is not None:
         events = events[events.time < max_time]
-        events.index = range(len(events))
+        events.index = list(range(len(events)))
     
     return events
 

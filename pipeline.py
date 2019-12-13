@@ -12,6 +12,10 @@ times from each trial. That iteration should be handled here, somehow ...
 """
 from __future__ import absolute_import
 
+from builtins import zip
+from builtins import map
+from builtins import range
+from builtins import object
 import numpy as np
 from . import io
 from .timepickers import TrialPicker, EventTimePicker, IntervalTimePickerNoTrial
@@ -21,7 +25,7 @@ from .timepickers import TrialPicker, EventTimePicker, IntervalTimePickerNoTrial
 #from ns5_process.RS_Sync import RS_Syncer # remove this dependency
 from .base import Folded
 
-class IntervalPipeline:
+class IntervalPipeline(object):
     """Object to fold spikes on specified intervals, without regard for trials.
     
     Generally you provide the spike server and the time picker, and it does
@@ -173,7 +177,7 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
         subtract_off_center=False)
     
     # Convert to dict Folded representation with trial numbers as labels
-    tn2ev = dict(zip(rss.btrial_numbers, f))
+    tn2ev = dict(list(zip(rss.btrial_numbers, f)))
     
     # Here is the link between behavior and neural
     # We have picked_trials_l, a list of trial numbers selected from behavior
@@ -207,7 +211,7 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
     if folding_kwargs is None: 
         folding_kwargs = {}
     res = {}    
-    for label, timelocks in label2timelocks.items():
+    for label, timelocks in list(label2timelocks.items()):
         # Optionally label with trial labels
         if label_with_btrial_numbers:
             trial_labels = label2btrial_numbers[label]
@@ -219,7 +223,7 @@ def pipeline_overblock_oneevent(kkserver, session, unit, rs,
         
         # Optionally apply a map to each folded
         if final_folded_map is not None:
-            res[label] = np.asarray(map(final_folded_map, res[label]),
+            res[label] = np.asarray(list(map(final_folded_map, res[label])),
                 dtype=final_folded_map_dtype)
 
     return res

@@ -25,6 +25,10 @@ You train it on the locations of data and it deals with calling from_KK.
 from __future__ import print_function
 from __future__ import absolute_import
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
 import numpy as np
 import pandas
 import os
@@ -320,7 +324,7 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
     if verify_unique_clusters:
         clusters_by_group = [
             set(np.unique(np.asarray(groupdata.unit)))
-            for groupdata in group_d.values()]
+            for groupdata in list(group_d.values())]
         if len(clusters_by_group) > 0:
             # find number of unique clusters
             # will error here if no clusters found
@@ -356,7 +360,7 @@ def flush(kfs_or_path, verbose=False):
         if verbose: print("no memoized files to delete")
     
 
-class KK_Server:
+class KK_Server(object):
     """Object to load spike data from multiple sessions (directories)
     
     The from_KK class method works great for a single session or a small
@@ -435,17 +439,17 @@ class KK_Server:
         All that is necessary to reconstitute this object is session_d
         and kk_kwargs
         """
-        import cPickle
+        import pickle
         to_pickle = {
             'session_d': self.session_d, 
             'kk_kwargs': self.kk_kwargs}
         with file(filename, 'w') as fi:
-            cPickle.dump(to_pickle, fi)
+            pickle.dump(to_pickle, fi)
     
     def flush(self, verbose=False):
         """Delete all memoized data in my session dict"""
         # Flush all sessions in the object
-        for session, path in self.session_d.items():
+        for session, path in list(self.session_d.items()):
             if verbose:
                 print("flushing", session)
             
@@ -455,9 +459,9 @@ class KK_Server:
     @classmethod
     def from_saved(self, filename):
         """Load server from saved information"""
-        import cPickle
+        import pickle
         with file(filename) as fi:
-            res = cPickle.load(fi)
+            res = pickle.load(fi)
         
         session_d = res['session_d']
         kk_kwargs = res['kk_kwargs']

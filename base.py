@@ -31,13 +31,19 @@ continuously valued functions of time, by binning or smoothing for instance.
 """
 from __future__ import print_function
 from __future__ import absolute_import
+from __future__ import division
 
+from builtins import zip
+from builtins import map
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import numpy as np
 import pandas
 from .utility import timelock
 import copy, warnings
 
-class Folded:
+class Folded(object):
     """Stores spike times on each trial timelocked to some event in that trial.
 
     Provides iteration over these spikes from each trial, as well as
@@ -272,7 +278,7 @@ class Folded:
         
         Returns the results as an array.
         """
-        return np.asarray(map(func, self.values))
+        return np.asarray(list(map(func, self.values)))
     
     def count_in_window(self, start, stop):
         """Counts spikes in time window on each spiketrain.
@@ -391,7 +397,7 @@ def is_equal(folded1, folded2):
 
     
 
-class Binned:
+class Binned(object):
     """Stores binned spike counts, optionally across categories (eg, stimuli).
     
     This is useful for comparing categories that have the same time base,
@@ -509,14 +515,14 @@ class Binned:
     # Rate calculation
     @property
     def rate(self):
-        return self.counts / self.trials.astype(np.float)
+        return old_div(self.counts, self.trials.astype(np.float))
     
     def rate_in(self, units='Hz'):
         rate = self.rate
         
         if units == 'Hz' or units == 'hz':            
             dt = np.diff(self.edges).mean()
-            rate = rate / dt
+            rate = old_div(rate, dt)
         elif units is None:
             pass
         else:
@@ -630,7 +636,7 @@ class Binned:
                 raise ValueError("cannot identify bins from empty dfolded")
             
             # Determine spanning range
-            all_ranges = np.array([val.range for val in dfolded.values()])
+            all_ranges = np.array([val.range for val in list(dfolded.values())])
             range = (all_ranges[:, 0].min(), all_ranges[:, 1].max())
         
             # Set via width or number
@@ -660,7 +666,7 @@ class Binned:
         """
         # Generate columns
         if columns is None:
-            columns = range(len(folded_l))
+            columns = list(range(len(folded_l)))
         
         # Bin each entry in folded_l
         binned_l = []
@@ -949,14 +955,14 @@ def define_bin_edges2(bins=None, binwidth=None, data_range=None,
     
     # Use binwidth to estimate number of bins if necessary
     if bins is None:
-        bins = np.rint((data_range[1] - data_range[0]) / binwidth)
+        bins = np.rint(old_div((data_range[1] - data_range[0]), binwidth))
     
     # Calculate
     edges = np.linspace(data_range[0], data_range[1], bins + 1)  
     return edges
 
 from DiscreteAnalyze.PointProc import smooth_event_train
-class GaussianSmoother:
+class GaussianSmoother(object):
     """Object providing methods to smooth spiketrains instead of binning.
     
     Primarily intended to provide the `meth` argument to Binned.from_folded
@@ -1022,7 +1028,7 @@ class GaussianSmoother:
         bins = np.asarray(define_bin_edges(bins=bins, range=range))
         bincenters = bins[:-1] + 0.5 * np.diff(bins)
         binwidth = np.mean(np.diff(bincenters))
-        fs = 1 / binwidth
+        fs = old_div(1, binwidth)
 
         # Discretize by numbering the bins from 0 to len(bincenters) - 1,
         # and subtracting the first bincenter from all spike times, then

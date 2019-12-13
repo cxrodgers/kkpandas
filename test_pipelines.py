@@ -1,5 +1,6 @@
 # PSTHs locked to various trial events and split by GO vs NOGO
 
+from builtins import object
 import my, my.dataload
 import numpy as np, pandas, kkpandas
 from ns5_process import LBPB
@@ -8,7 +9,7 @@ from ns5_process import LBPB
 
 
 # Put this in dataload
-class SpikeServer:
+class SpikeServer(object):
     @classmethod
     def get(self, **kwargs):
         return my.dataload.ulabel2spikes(**kwargs)

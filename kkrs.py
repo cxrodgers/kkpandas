@@ -4,6 +4,10 @@ This is all pretty specific to my analyses and conventions.
 """
 from __future__ import print_function
 from __future__ import absolute_import
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import kkpandas
 from . import kkio
 import numpy as np
@@ -99,7 +103,7 @@ def RS_fold_for_tuning_curve(rs, override_dir=None, **bin_kwargs):
         override_dir = rs.last_klusters_dir()
     
     # Stuff that is the same for all groups
-    timestamps = rs.read_timestamps() / rs.get_sampling_rate()
+    timestamps = old_div(rs.read_timestamps(), rs.get_sampling_rate())
     tones = np.loadtxt(os.path.join(rs.full_path, 'tones'))
     attens = np.loadtxt(os.path.join(rs.full_path, 'attens'), dtype=np.int)    
     assert len(tones) == len(attens)
@@ -189,7 +193,7 @@ def fold_for_tuning_curve(spikes, timestamps, tones, attens,
 
     # Labels of the bins, ie bin "centers"
     tc_freq_labels = 10 ** (
-        np.log10(tc_freqs[:-1]) + np.diff(np.log10(tc_freqs)) / 2)
+        np.log10(tc_freqs[:-1]) + old_div(np.diff(np.log10(tc_freqs)), 2))
     tc_atten_labels = tc_attens[:-1]
 
     # Place each stimulus in a bin

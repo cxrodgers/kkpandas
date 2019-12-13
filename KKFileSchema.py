@@ -1,11 +1,13 @@
 """Pure Python object to handle filename parsing for KlustaKwik files"""
 from __future__ import print_function
 
+from builtins import zip
+from builtins import object
 import numpy as np
 import os.path
 import glob
 
-class KKFileSchema:
+class KKFileSchema(object):
     def __init__(self, basename_or_dirname, ignore_tilde=True):
         """Initialize a new KK schema from directory or basename.
         
@@ -65,7 +67,7 @@ class KKFileSchema:
             
             # Optionally drop things ending in tilde
             if self.ignore_tilde:
-                filename_l = filter(lambda s: not s.endswith('~'), filename_l)
+                filename_l = [s for s in filename_l if not s.endswith('~')]
 
             # Filter out anything that does not look like:
             #   basename + '.' + extension + '.' + int
@@ -92,7 +94,7 @@ class KKFileSchema:
         
         # check that files were actually found
         nonzero_exts = [
-            key for key, val in self._filenamed.items() if len(val) > 0]
+            key for key, val in list(self._filenamed.items()) if len(val) > 0]
         if len(nonzero_exts) == 0:
             print("warning: no KK files found like %s" % self.basename)
             self.groups = []
@@ -123,23 +125,23 @@ class KKFileSchema:
         if self._force_reload:
             self.populate()        
         return [
-            key for key, val in self._filenamed.items() if len(val) > 0]
+            key for key, val in list(self._filenamed.items()) if len(val) > 0]
     
     @property
     def fetfiles(self):
-        return dict(zip(self.filenumbers('fet'), self.filenames('fet')))
+        return dict(list(zip(self.filenumbers('fet'), self.filenames('fet'))))
     
     @property
     def clufiles(self):
-        return dict(zip(self.filenumbers('clu'), self.filenames('clu')))
+        return dict(list(zip(self.filenumbers('clu'), self.filenames('clu'))))
 
     @property
     def resfiles(self):
-        return dict(zip(self.filenumbers('res'), self.filenames('res')))
+        return dict(list(zip(self.filenumbers('res'), self.filenames('res'))))
 
     @property
     def spkfiles(self):
-        return dict(zip(self.filenumbers('spk'), self.filenames('spk')))
+        return dict(list(zip(self.filenumbers('spk'), self.filenames('spk'))))
 
     @classmethod
     def coerce(self, kfs_or_path):

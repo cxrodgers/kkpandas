@@ -6,9 +6,13 @@ other objects.
 * panda_pick : Selection from DataFrame based on items in columns
 """
 from __future__ import print_function
+from __future__ import division
 
 
 
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 import pandas
 import numpy as np
 import os.path
@@ -119,7 +123,7 @@ def timelock(a1, a2=None, start=None, stop=None, dstart=None, dstop=None,
             res.append(a1[i_start:i_stop] - aa2)
     elif return_value == 'index':
         for i_start, i_stop, aa2 in zip(i_starts, i_stops, a2):
-            res.append(range(i_start, i_stop))
+            res.append(list(range(i_start, i_stop)))
     else:
         raise Exception("unsupported return value: %s" % return_value)
     
@@ -179,7 +183,7 @@ def assign_trials_to_events(events, trial_times, dstart, dstop):
 # Utility functions for data frames
 def startswith(df, colname, s):
     # untested
-    ixs = map(lambda ss: ss.startswith(s), df[colname])
+    ixs = [ss.startswith(s) for ss in df[colname]]
     return df[ixs]
 
 def is_nonstring_iter(val):
@@ -211,7 +215,7 @@ def panda_pick(df, isnotnull=None, **kwargs):
     return unique, ....
     """
     msk = np.ones(len(df), dtype=np.bool)
-    for key, val in kwargs.items():
+    for key, val in list(kwargs.items()):
         if val is None:
             continue
         elif is_nonstring_iter(val):
@@ -275,7 +279,7 @@ def correlogram(t1, t2=None, bin_width=.001, limit=.02, auto=False):
     # Determine the bin edges for the histogram
     # Later we will rely on the symmetry of `bins` for undoing `swap_args`
     limit = float(limit)
-    bins = np.linspace(-limit, limit, num=(2 * limit/bin_width + 1))
+    bins = np.linspace(-limit, limit, num=(old_div(2 * limit,bin_width) + 1))
 
     # This is the old way to calculate bin edges. I think it is more
     # sensitive to numerical error. The new way may slightly change the
