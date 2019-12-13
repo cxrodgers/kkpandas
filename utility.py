@@ -5,6 +5,7 @@ other objects.
 * timelock : Folding operation
 * panda_pick : Selection from DataFrame based on items in columns
 """
+from __future__ import print_function
 
 
 
@@ -102,7 +103,7 @@ def timelock(a1, a2=None, start=None, stop=None, dstart=None, dstop=None,
     
     if warn_if_overlap:
         if np.any(start[1:] < stop[:-1]):
-            print "warning: trial overlap in timelock, possible doublecounting"
+            print("warning: trial overlap in timelock, possible doublecounting")
     
     # Find indexes into a1 using start and stop
     i_starts = np.searchsorted(a1, start)

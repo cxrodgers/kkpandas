@@ -29,10 +29,12 @@ in each category .. in fact each category could be a single trial. The key
 point is that all of the Flat representations have been turned into
 continuously valued functions of time, by binning or smoothing for instance.
 """
+from __future__ import print_function
+from __future__ import absolute_import
 
 import numpy as np
 import pandas
-from utility import timelock
+from .utility import timelock
 import copy, warnings
 
 class Folded:
@@ -249,7 +251,7 @@ class Folded:
         # Check that ranges are consistent, if possible
         try:
             if not np.allclose(self.range, other.range):
-                print "warning: range not the same in summed Folded"
+                print("warning: range not the same in summed Folded")
         except:
             pass
         

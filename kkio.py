@@ -22,13 +22,15 @@ High-level
 KK_Server : object for integrating across multiple sessions / directories
 You train it on the locations of data and it deals with calling from_KK.
 """
+from __future__ import print_function
+from __future__ import absolute_import
 
 import numpy as np
 import pandas
 import os
 import glob
-from KKFileSchema import KKFileSchema
-import utility
+from .KKFileSchema import KKFileSchema
+from . import utility
 
 SPIKE_TIME_COLUMN_NAME = 'time'
 
@@ -90,7 +92,7 @@ def write_fetfile(df, filename, also_write_times=True,
     for clustering.
     """
     if SPIKE_TIME_COLUMN_NAME not in df.columns and also_write_times:
-        print "warning: no spike times provided to write"
+        print("warning: no spike times provided to write")
         also_write_times = False
     
     cols = df.columns
@@ -348,10 +350,10 @@ def flush(kfs_or_path, verbose=False):
     
     # Delete it if it exists
     if os.path.exists(to_delete):
-        if verbose: print "deleting", to_delete
+        if verbose: print("deleting", to_delete)
         os.remove(to_delete)
     else:
-        if verbose: print "no memoized files to delete"
+        if verbose: print("no memoized files to delete")
     
 
 class KK_Server:
@@ -445,7 +447,7 @@ class KK_Server:
         # Flush all sessions in the object
         for session, path in self.session_d.items():
             if verbose:
-                print "flushing", session
+                print("flushing", session)
             
             # Call the flush method from this module (not this object)
             flush(path, verbose)

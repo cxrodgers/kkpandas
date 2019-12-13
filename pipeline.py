@@ -10,15 +10,16 @@ However we might wish to iterate over units and/or trial types and/or
 times from each trial. That iteration should be handled here, somehow ...
 
 """
+from __future__ import absolute_import
 
 import numpy as np
-import io
-from timepickers import TrialPicker, EventTimePicker, IntervalTimePickerNoTrial
+from . import io
+from .timepickers import TrialPicker, EventTimePicker, IntervalTimePickerNoTrial
 # Something problematic about this circular import
 # Doesn't belong here anyway since this should not depend on RS_Syncer
 # Will move to into that pipeline method till I figure this out
 #from ns5_process.RS_Sync import RS_Syncer # remove this dependency
-from base import Folded
+from .base import Folded
 
 class IntervalPipeline:
     """Object to fold spikes on specified intervals, without regard for trials.

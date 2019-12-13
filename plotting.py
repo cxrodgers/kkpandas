@@ -1,6 +1,7 @@
+from __future__ import absolute_import
 import matplotlib.pyplot as plt
 import numpy as np
-from base import Binned
+from .base import Binned
 
 def plot_binned_by_level(binned, ax=None):
     if ax is None:

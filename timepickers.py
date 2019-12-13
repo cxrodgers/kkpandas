@@ -9,10 +9,12 @@ I'll try to keep this module agnostic to the parameters of any specific task,
 but note that it uses the variables `events` and `trials_info` as loaded by 
 the io module.
 """
+from __future__ import print_function
+from __future__ import absolute_import
 
 import numpy as np
-from base import Folded
-import utility
+from .base import Folded
+from . import utility
 
 class TrialPicker:   
     """Object for picking trial numbers based on trials_info"""
@@ -97,9 +99,9 @@ class EventTimePicker:
                 res.append(val.item())
         
         if w:
-            print "warning: some events did not occur"
+            print("warning: some events did not occur")
         if w2:
-            print "warning: multiple events detected on some trials"
+            print("warning: multiple events detected on some trials")
         return res
 
 

@@ -1,4 +1,5 @@
 """Pure Python object to handle filename parsing for KlustaKwik files"""
+from __future__ import print_function
 
 import numpy as np
 import os.path
@@ -76,7 +77,7 @@ class KKFileSchema:
                 
                 if m is None:
                     # Does not match, issue warning
-                    print "warning: cannot parse %s, ignoring" % fn
+                    print("warning: cannot parse %s, ignoring" % fn)
                 else:
                     # Add to filtered filename and filenumber lists
                     filenumber = int(m.groups()[0])
@@ -93,7 +94,7 @@ class KKFileSchema:
         nonzero_exts = [
             key for key, val in self._filenamed.items() if len(val) > 0]
         if len(nonzero_exts) == 0:
-            print "warning: no KK files found like %s" % self.basename
+            print("warning: no KK files found like %s" % self.basename)
             self.groups = []
         else:
             # check that the group numbering of each extension matches up
