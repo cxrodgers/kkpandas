@@ -618,6 +618,9 @@ class Binned:
         """
         if keys is None:
             keys = sorted(dfolded.keys())
+
+        if len(keys) == 0 or len(dfolded) == 0:
+            raise ValueError("dfolded cannot be empty in from_dict_of_folded")
         
         # Auto set the bins
         if not np.iterable(bins):
