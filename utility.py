@@ -12,7 +12,6 @@ from __future__ import division
 
 from builtins import zip
 from builtins import range
-from past.utils import old_div
 import pandas
 import numpy as np
 import os.path
@@ -279,12 +278,8 @@ def correlogram(t1, t2=None, bin_width=.001, limit=.02, auto=False):
     # Determine the bin edges for the histogram
     # Later we will rely on the symmetry of `bins` for undoing `swap_args`
     limit = float(limit)
-    bins = np.linspace(-limit, limit, num=(old_div(2 * limit,bin_width) + 1))
-
-    # This is the old way to calculate bin edges. I think it is more
-    # sensitive to numerical error. The new way may slightly change the
-    # way that spikes near the bin edges are assigned.
-    #bins = np.arange(-limit, limit + bin_width, bin_width)
+    n_bins = int(np.rint(2 * limit / float(bin_width))) + 1
+    bins = np.linspace(-limit, limit, n_bins)
 
     # Determine the indexes into `t2` that are relevant for each spike in `t1`
     ii2 = np.searchsorted(t2, t1 - limit)
