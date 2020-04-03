@@ -1,6 +1,7 @@
+from __future__ import absolute_import
 import matplotlib.pyplot as plt
 import numpy as np
-from base import Binned
+from .base import Binned
 
 def plot_binned_by_level(binned, ax=None):
     if ax is None:
@@ -23,7 +24,7 @@ def plot_binned(binned, units=None, ax=None, legend=True, **kwargs):
     
     csl = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'gray']
     
-    for n, (label, col) in enumerate(binned.rate_in(units).iteritems()):
+    for n, (label, col) in enumerate(binned.rate_in(units).items()):
         if 'color' in kwargs:
             ax.plot(binned.t, col.values, label=label, **kwargs)
         else:
@@ -39,7 +40,7 @@ def plot_psth_with_rasters_from_dict(
     dfolded, keys=None, spshape=None, bins=None):
     
     if keys is None:
-        keys = dfolded.keys()
+        keys = list(dfolded.keys())
     
     f = plt.figure()
     for n, key in enumerate(keys):

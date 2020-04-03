@@ -9,12 +9,18 @@ I'll try to keep this module agnostic to the parameters of any specific task,
 but note that it uses the variables `events` and `trials_info` as loaded by 
 the io module.
 """
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import division
 
+from builtins import zip
+from past.utils import old_div
+from builtins import object
 import numpy as np
-from base import Folded
-import utility
+from .base import Folded
+from . import utility
 
-class TrialPicker:   
+class TrialPicker(object):   
     """Object for picking trial numbers based on trials_info"""
     @classmethod
     def pick(self, trials_info, labels=None, label_kwargs=None, 
@@ -57,7 +63,7 @@ class TrialPicker:
     
 
 
-class IntervalTimePickerNoTrial:
+class IntervalTimePickerNoTrial(object):
     """Given event names and events structure, return times to lock on"""
     @classmethod
     def pick_d(self, names, events):
@@ -74,7 +80,7 @@ class IntervalTimePickerNoTrial:
         return find_events(events, statename + '_in', statename+'_out')
 
 
-class EventTimePicker:
+class EventTimePicker(object):
     """Given event name and folded events_info, returns times to lock on"""
     @classmethod
     def pick(self, event_name, trials_l):
@@ -97,13 +103,13 @@ class EventTimePicker:
                 res.append(val.item())
         
         if w:
-            print "warning: some events did not occur"
+            print("warning: some events did not occur")
         if w2:
-            print "warning: multiple events detected on some trials"
+            print("warning: multiple events detected on some trials")
         return res
 
 
-class TrialsInfoTimePicker:
+class TrialsInfoTimePicker(object):
     """Picks times from columns in trials_info, rather than by event name
     
     Also uses a different, more general syntax. Currently works only with
@@ -158,7 +164,7 @@ def find_events(events, start_name, stop_name=None, t_start=None, t_stop=None):
         # Error check
         if np.any(stops < starts):
             # this shouldn't happen after correcting previous error case
-            1/0
+            old_div(1,0)
         
         # Account for some deltas
         if t_start is not None:

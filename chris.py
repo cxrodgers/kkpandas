@@ -1,14 +1,15 @@
 """Wrapper and convenience methods tailored to my experiments"""
+from __future__ import absolute_import
 
 import pandas
-import io
+from . import io
 import numpy as np
-import utility
+from . import utility
 from ns5_process import LBPB
-from base import Folded
-from timepickers import TrialPicker
+from .base import Folded
+from .timepickers import TrialPicker
 import matplotlib.pyplot as plt
-import plotting
+from . import plotting
 
 # TRIALS_INFO picking functions with my defaults
 def pick_trial_numbers(trials_info, outcome='hit', nonrandom=0, 

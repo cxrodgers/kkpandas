@@ -2,13 +2,19 @@
 
 This is all pretty specific to my analyses and conventions.
 """
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import kkpandas
-import kkio
+from . import kkio
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from base import Folded
-import plotting
+from .base import Folded
+from . import plotting
 from ns5_process import RecordingSession
 from ns5_process import RS_Sync
 
@@ -97,17 +103,17 @@ def RS_fold_for_tuning_curve(rs, override_dir=None, **bin_kwargs):
         override_dir = rs.last_klusters_dir()
     
     # Stuff that is the same for all groups
-    timestamps = rs.read_timestamps() / rs.get_sampling_rate()
+    timestamps = old_div(rs.read_timestamps(), rs.get_sampling_rate())
     tones = np.loadtxt(os.path.join(rs.full_path, 'tones'))
     attens = np.loadtxt(os.path.join(rs.full_path, 'attens'), dtype=np.int)    
     assert len(tones) == len(attens)
     
     # Deal with alignment issues    
     if len(timestamps) > len(tones):
-        print "warning: too many timestamps, truncating"
+        print("warning: too many timestamps, truncating")
         timestamps = timestamps[:len(tones)]
     if len(tones) > len(timestamps):
-        print "warning: not enough timetsamps, truncating tones"
+        print("warning: not enough timetsamps, truncating tones")
         tones = tones[:len(timestamps)]
         attens = attens[:len(timestamps)]
     
@@ -187,7 +193,7 @@ def fold_for_tuning_curve(spikes, timestamps, tones, attens,
 
     # Labels of the bins, ie bin "centers"
     tc_freq_labels = 10 ** (
-        np.log10(tc_freqs[:-1]) + np.diff(np.log10(tc_freqs)) / 2)
+        np.log10(tc_freqs[:-1]) + old_div(np.diff(np.log10(tc_freqs)), 2))
     tc_atten_labels = tc_attens[:-1]
 
     # Place each stimulus in a bin
