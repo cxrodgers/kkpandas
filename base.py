@@ -43,6 +43,12 @@ import pandas
 from .utility import timelock
 import copy, warnings
 
+try:
+    from DiscreteAnalyze.PointProc import smooth_event_train
+except ImportError:
+    pass
+
+
 class Folded(object):
     """Stores spike times on each trial timelocked to some event in that trial.
 
@@ -961,7 +967,6 @@ def define_bin_edges2(bins=None, binwidth=None, data_range=None,
     edges = np.linspace(data_range[0], data_range[1], bins + 1)  
     return edges
 
-from DiscreteAnalyze.PointProc import smooth_event_train
 class GaussianSmoother(object):
     """Object providing methods to smooth spiketrains instead of binning.
     
