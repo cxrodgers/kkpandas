@@ -13,6 +13,5 @@ from . import utility
 from . import timepickers
 from . import pipeline
 from . import io
-from . import chris
 from . import plotting
 
