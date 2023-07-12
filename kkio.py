@@ -250,7 +250,7 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
         if memoized_filename is None:
             memoized_filename = kfs.basename + '.kkp'
         try:
-            data = pandas.load(memoized_filename)
+            data = pandas.read_csv(memoized_filename)
             return_early = True
         except IOError:
             return_early = False
@@ -340,7 +340,7 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
         ignore_index=True)
 
     if save_memoized:
-        data.save(memoized_filename)
+        data.to_csv(memoized_filename)
 
     return data
 
