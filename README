@@ -8,25 +8,25 @@ If you just want to load data and you have your own analysis functions:
     from kkpandas import kkio, KKFileSchema
     spikes = kkio.from_KK(path_to_KK_files)
 
-I chose to use the pandas module for this because the DataFrame object is a 
-rich way to deal with structured data like this, and also because the plaintext 
-reading functions in pandas appear to be much faster than numpy/matplotlib 
-equivalents for this application. Still you will find that the speed of 
+I chose to use the pandas module for this because the DataFrame object is a
+rich way to deal with structured data like this, and also because the plaintext
+reading functions in pandas appear to be much faster than numpy/matplotlib
+equivalents for this application. Still you will find that the speed of
 reading plaintext is the rate-limiting step.
 
-KKFileSchema: an object that handles interaction with filesystem to check 
+KKFileSchema: an object that handles interaction with filesystem to check
 for which KK files exist and does some simple error checking. Pure Python!
 
-kkio: a module that actually does the reading of the files and formats 
+kkio: a module that actually does the reading of the files and formats
 them into pandas DataFrame. The main function to use for this is:
     kkpandas.from_KK(path_to_klusters_files)
 
 
-There has been some drift in the KK file format specification over time. 
-For instance, Klusters *requires* that the last column in the fetfile be 
-the list of spike times, and that the number of features include this time, 
-even though this is not a true feature of the spike. (Thanks to John Schulman 
-for pointing this out.) Also, the xml file that Klusters uses disallows the 
+There has been some drift in the KK file format specification over time.
+For instance, Klusters *requires* that the last column in the fetfile be
+the list of spike times, and that the number of features include this time,
+even though this is not a true feature of the spike. (Thanks to John Schulman
+for pointing this out.) Also, the xml file that Klusters uses disallows the
 use of a group numbered `0` and essentially insists that you start with 1.
 
 
@@ -62,7 +62,7 @@ xrodgers@gmail.com
 
 References:
 [1] Definition of KK file types:
-Hazan, Zugaro, Buzsaki. J Neurosci Methods 2006. 
+Hazan, Zugaro, Buzsaki. J Neurosci Methods 2006.
 
 [2] pandas module for efficient handling of structured data
 http://pandas.pydata.org/

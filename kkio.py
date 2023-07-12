@@ -282,7 +282,7 @@ def from_KK(basename='.', groups_to_get=None, group_multiplier=None, fs=None,
         if add_group_as_column:
             group_d[group] = pandas.DataFrame(
                 {spiketimes.name: spiketimes, unit_ids.name: unit_ids,
-                    'group': np.ones(len(spiketimes), dtype=np.int) * group})
+                    'group': np.ones(len(spiketimes), dtype=int) * group})
         else:
             group_d[group] = pandas.DataFrame(
                 {spiketimes.name: spiketimes, unit_ids.name: unit_ids})
@@ -504,7 +504,7 @@ def append_duplicated_spikes(data_dir, output_dir, groupnum, idxs, n_samples=24)
     clu = read_clufile(kfs1.clufiles[groupnum])
     newclunum = clu.max() + 1
     newclu = pandas.concat([clu,
-        pandas.Series(newclunum * np.ones(len(idxs)), dtype=np.int)],
+        pandas.Series(newclunum * np.ones(len(idxs)), dtype=int)],
         ignore_index=True)
     write_clufile(newclu, kfs2.clufiles[groupnum])
 
