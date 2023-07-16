@@ -16,7 +16,7 @@ class ConstructingFoldedFromArray(unittest.TestCase):
         centers = np.array([2, 7])
         f = Folded.from_flat(a, centers=centers, dstart=-2, dstop=2,
             subtract_off_center=False)
-        
+
 	self.assertEqual(len(f), len(centers))
         self.assertTrue(np.all(f[0] == a[:1]))
         self.assertTrue(np.all(f[1] == a[2:]))
@@ -26,7 +26,7 @@ class ConstructingFoldedFromArray(unittest.TestCase):
         a = np.array([1, 4, 6])
         centers = np.array([2, 7])
         f = Folded.from_flat(a, centers=centers, dstart=-2, dstop=2)
-	
+
 	self.assertEqual(len(f), len(centers))
         self.assertTrue(np.all(f[0] == a[:1] - centers[0]))
         self.assertTrue(np.all(f[1] == (a[2:] - centers[1])))
@@ -36,7 +36,7 @@ class ConstructingFoldedFromArray(unittest.TestCase):
         a = np.array([1, 5, 6])
         centers = np.array([2, 7])
         f = Folded.from_flat(a, centers=centers, dstart=-2, dstop=2)
-	
+
 	self.assertEqual(len(f), len(centers))
         self.assertTrue(np.all(f[0] == a[:1] - centers[0]))
         self.assertTrue(np.all(f[1] == (a[1:] - centers[1])))
@@ -46,7 +46,7 @@ class ConstructingFoldedFromArray(unittest.TestCase):
         a = np.array([1, 5, 9])
         centers = np.array([2, 7])
         f = Folded.from_flat(a, centers=centers, dstart=-2, dstop=2)
-	
+
 	self.assertEqual(len(f), len(centers))
         self.assertTrue(np.all(f[0] == a[:1] - centers[0]))
         self.assertTrue(np.all(f[1] == (a[1:-1] - centers[1])))

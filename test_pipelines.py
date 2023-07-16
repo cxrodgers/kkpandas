@@ -34,7 +34,7 @@ for ulabel in units_to_analyze:
     my.printnow(ulabel)
     trials_info = my.dataload.ulabel2trials_info(ulabel)
     time_picker = kkpandas.timepickers.TrialsInfoTimePicker(trials_info)
-    
+
     dfolded = kkpandas.pipeline.pipeline(trials_info,
         spike_server=SpikeServer,
         spike_server_kwargs={'ulabel': ulabel, 'sort_spikes': True},
@@ -43,16 +43,15 @@ for ulabel in units_to_analyze:
         trial_picker_kwargs=tpk,
         folding_kwargs={'dstart': -2.0, 'dstop': 2.0},
         )
-    
+
     dfolded2 = my.dataload.ulabel2dfolded(ulabel,
         trial_picker_kwargs=tpk,
         folding_kwargs={'dstart': -2.0, 'dstop': 2.0},
         )
-    
+
     # Test the same
     for label in dfolded:
         folded1 = dfolded[label]
         folded2 = dfolded2[label]
         assert kkpandas.is_equal(folded1, folded2)
         assert kkpandas.is_equal(folded2, folded1)
-    
