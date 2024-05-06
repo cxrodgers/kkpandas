@@ -123,7 +123,7 @@ class Folded(object):
             # Tortured syntax
             # Avoids conflict with keyword range
             # and also ensures that values[n] is a reference, not a copy
-            for n in np.arange(len(values), dtype=np.int):
+            for n in np.arange(len(values), dtype=int):
                 values[n] = np.asarray(values[n]).flatten()
         
         # Store or calculate centers
@@ -600,7 +600,7 @@ class Binned(object):
         # Proper way is to count edges for which edge > (start - center) and
         # edge < (stop - center), or something, but not sure how to handle the
         # floating comparison properly.
-        trials = np.array([len(folded)] * len(counts)).astype(np.int)
+        trials = np.array([len(folded)] * len(counts)).astype(int)
         
         # Now construct and return
         return Binned(counts=counts, trials=trials, edges=edges)
@@ -817,7 +817,7 @@ class Binned(object):
         if folded.labels is not None:
             keys = folded.labels
         else:
-            keys = np.arange(len(folded), dtype=np.int)
+            keys = np.arange(len(folded), dtype=int)
         
         dfolded = {}
         for n, key in enumerate(keys):
@@ -1040,11 +1040,11 @@ class GaussianSmoother(object):
         # multiplying by sampling rate.
         n_start = 0
         n_stop = len(bincenters) - 1
-        timestamps = np.rint(fs*(np.asarray(a) - bincenters[0])).astype(np.int)
+        timestamps = np.rint(fs*(np.asarray(a) - bincenters[0])).astype(int)
         
         # Define filter parameters in samples
         filter_std = self.smoothing_window * fs # ok if not integer
-        filter_truncation_width = np.rint(3 * filter_std).astype(np.int)
+        filter_truncation_width = np.rint(3 * filter_std).astype(int)
         
         # Call the underlying smoothing function
         n_op, x_op = smooth_event_train(

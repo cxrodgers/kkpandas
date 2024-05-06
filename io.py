@@ -92,7 +92,7 @@ def load_trials_info(basename, join_on_trial_timings=True, drop_munged=True,
         # Keep only "occurred trials"
         # This is mainly for the case where no trial timings are available
         trial_numbers = np.loadtxt(os.path.join(basename, 'TRIAL_NUMBERS'),
-            dtype=np.int)
+            dtype=int)
 
         # Filter by the trials that occurred, that is, those for which
         # a behavioral outcome was recorded AND were included in neural

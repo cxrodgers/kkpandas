@@ -105,7 +105,7 @@ def RS_fold_for_tuning_curve(rs, override_dir=None, **bin_kwargs):
     # Stuff that is the same for all groups
     timestamps = old_div(rs.read_timestamps(), rs.get_sampling_rate())
     tones = np.loadtxt(os.path.join(rs.full_path, 'tones'))
-    attens = np.loadtxt(os.path.join(rs.full_path, 'attens'), dtype=np.int)
+    attens = np.loadtxt(os.path.join(rs.full_path, 'attens'), dtype=int)
     assert len(tones) == len(attens)
 
     # Deal with alignment issues
