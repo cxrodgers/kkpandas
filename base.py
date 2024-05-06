@@ -521,7 +521,7 @@ class Binned(object):
     # Rate calculation
     @property
     def rate(self):
-        return old_div(self.counts, self.trials.astype(np.float))
+        return old_div(self.counts, self.trials.astype(float))
     
     def rate_in(self, units='Hz'):
         rate = self.rate

@@ -155,7 +155,7 @@ def assign_trials_to_events(events, trial_times, dstart, dstop):
     res = pandas.Series(np.empty(len(events)), index=events.index)
     res.values.fill(np.nan)
     bad_indices = pandas.Series(np.zeros(len(events)), index=events.index,
-        dtype=np.bool)
+        dtype=bool)
 
     # Assign each trial
     for n_trial, event_indices in enumerate(event_indices_by_trial):
@@ -213,7 +213,7 @@ def panda_pick(df, isnotnull=None, **kwargs):
     add flags for string behavior, AND/OR behavior, error if item not found,
     return unique, ....
     """
-    msk = np.ones(len(df), dtype=np.bool)
+    msk = np.ones(len(df), dtype=bool)
     for key, val in list(kwargs.items()):
         if val is None:
             continue

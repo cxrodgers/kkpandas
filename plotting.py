@@ -98,7 +98,7 @@ def plot_rasters(folded_spike_times, ax=None, full_range=1.0,
 
     for n, trial_spikes in enumerate(folded_spike_times):
         ax.plot(trial_spikes,
-            y_offset + np.ones(trial_spikes.shape, dtype=np.float) *
+            y_offset + np.ones(trial_spikes.shape, dtype=float) *
             n / float(len(folded_spike_times)) * full_range,
             **plot_kwargs)
 
