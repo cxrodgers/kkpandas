@@ -25,8 +25,6 @@ You train it on the locations of data and it deals with calling from_KK.
 from __future__ import print_function
 from __future__ import absolute_import
 
-from future import standard_library
-standard_library.install_aliases()
 from builtins import range
 from builtins import object
 import numpy as np

@@ -36,7 +36,6 @@ from __future__ import division
 from builtins import zip
 from builtins import map
 from builtins import range
-from past.utils import old_div
 from builtins import object
 import numpy as np
 import pandas
@@ -521,14 +520,14 @@ class Binned(object):
     # Rate calculation
     @property
     def rate(self):
-        return old_div(self.counts, self.trials.astype(float))
+        return self.counts / self.trials.astype(float)
     
     def rate_in(self, units='Hz'):
         rate = self.rate
         
         if units == 'Hz' or units == 'hz':            
             dt = np.diff(self.edges).mean()
-            rate = old_div(rate, dt)
+            rate = rate / dt
         elif units is None:
             pass
         else:
@@ -961,7 +960,7 @@ def define_bin_edges2(bins=None, binwidth=None, data_range=None,
     
     # Use binwidth to estimate number of bins if necessary
     if bins is None:
-        bins = np.rint(old_div((data_range[1] - data_range[0]), binwidth))
+        bins = np.rint((data_range[1] - data_range[0]) / binwidth)
     
     # Calculate
     edges = np.linspace(data_range[0], data_range[1], bins + 1)  
@@ -1033,7 +1032,7 @@ class GaussianSmoother(object):
         bins = np.asarray(define_bin_edges(bins=bins, range=range))
         bincenters = bins[:-1] + 0.5 * np.diff(bins)
         binwidth = np.mean(np.diff(bincenters))
-        fs = old_div(1, binwidth)
+        fs = 1 / binwidth
 
         # Discretize by numbering the bins from 0 to len(bincenters) - 1,
         # and subtracting the first bincenter from all spike times, then

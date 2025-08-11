@@ -9,9 +9,11 @@ from .base import Folded, Binned
 from .base import define_range, define_bin_edges2, is_equal, what_differs
 
 # Bring in the other files
+# CR: I commented out ones that we don't use anymore because they have
+# obsolete code requiring future or past
 from . import utility
-from . import timepickers
-from . import pipeline
+#from . import timepickers
+#from . import pipeline
 from . import io
 from . import plotting
 
